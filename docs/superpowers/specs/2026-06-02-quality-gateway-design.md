@@ -99,21 +99,18 @@ Verifies design principles:
 - Output: HTML report in `build/reports/pitest/`
 - Runs as dependency of `check`
 
-### Thresholds
+### Thresholds and Targets
 
-| Layer | Target classes | Minimum mutation coverage |
-|---|---|---|
-| Domain | `com.sanmoo.eventsourcing.creditaccount.domain.*` | 100% |
-| Application | `com.sanmoo.eventsourcing.creditaccount.application.*` | 80% |
+PITest is configured with `targetClasses` covering all production code and `excludedClasses` filtering out types with no testable logic. Thresholds apply to the remaining (non-excluded) classes.
 
-### Exclusions
+| Layer | Target classes | Excluded classes | Minimum mutation coverage |
+|---|---|---|---|
+| Domain | `com.sanmoo.eventsourcing.creditaccount.domain.*` | `domain.model.*`, `domain.error.*` | 100% |
+| Application | `com.sanmoo.eventsourcing.creditaccount.application.*` | `application.command.*`, `application.result.*` | 80% |
 
-- `application.command.*` — pure records with no logic.
-- `application.result.*` — pure records with no logic.
-- `domain.model.*` — value object records with minimal behavior.
-- `domain.error.*` — simple exception classes.
+**What the 100% domain threshold covers:** `CreditAccount` (aggregate logic, `apply`, command methods, invariants) and `Money` (arithmetic, comparisons, validation). These are the classes with real behavioral logic.
 
-These exclusions avoid penalizing mutation coverage for boilerplate types with no testable logic.
+**Why these exclusions:** `domain.model.*` (value object records like `AuthorizationId`, `CreditAccountId`, `PurchaseAuthorization`, `CreditAccountSnapshot`), `domain.error.*` (simple exception classes), `application.command.*` (pure data records), and `application.result.*` (pure data records) have no conditional logic to mutate. Including them would dilute coverage metrics without improving test quality.
 
 ### Test gaps
 
