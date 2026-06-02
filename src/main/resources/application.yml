@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: credit-account-event-sourcing
+  datasource:
+    url: jdbc:postgresql://localhost:5432/credit_account
+    username: credit_account
+    password: credit_account
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
