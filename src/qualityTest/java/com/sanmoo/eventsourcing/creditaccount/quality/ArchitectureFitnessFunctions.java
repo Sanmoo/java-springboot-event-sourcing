@@ -24,8 +24,9 @@ public class ArchitectureFitnessFunctions {
                     "java..",
                     "com.sanmoo.eventsourcing.creditaccount.domain..",
                     "com.sanmoo.eventsourcing.creditaccount.application..",
-                    "tools.jackson.."
-            );
+                    "tools.jackson.."  // required for idempotency serialization; consider extracting serialization port
+            )
+            .because("application must not depend on inbound or outbound adapters");
 
     @ArchTest
     private static final ArchRule inbound_adapters_must_not_depend_on_outbound = classes()
