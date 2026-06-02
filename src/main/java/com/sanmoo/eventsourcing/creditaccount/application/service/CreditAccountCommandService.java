@@ -192,7 +192,8 @@ public class CreditAccountCommandService {
 
     private CommandResult handleReplay(IdempotencyDecision.Replay replay) {
         try {
-            return objectMapper.readValue(replay.responsePayload(), CommandResult.class);
+            CommandResult original = objectMapper.readValue(replay.responsePayload(), CommandResult.class);
+            return new CommandResult(original.aggregateId(), original.aggregateVersion(), original.responseData(), true);
         } catch (Exception e) {
             throw new RuntimeException("Failed to deserialize idempotency response payload", e);
         }
@@ -246,9 +247,19 @@ public class CreditAccountCommandService {
         }
     }
 
+    public Map<String, Object> getAccount(String aggregateId) {
+        CreditAccountId creditAccountId = CreditAccountId.of(java.util.UUID.fromString(aggregateId));
+        List<CreditAccountEvent> history = loadHistory(aggregateId);
+        CreditAccount account = CreditAccount.rehydrate(creditAccountId, history);
+        if (!account.snapshot().opened()) {
+            throw new com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotFoundException(
+                    "Credit account not found: " + aggregateId);
+        }
+        return buildResponseData(account);
+    }
+
     private Instant now() {
         return Instant.now();
     }
-
 
 }
