@@ -21,14 +21,15 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
+
+import com.sanmoo.eventsourcing.creditaccount.PostgresTestImage;
 
 @Testcontainers
 @SpringBootTest
 class JdbcEventStoreAdapterIT {
 
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:17"));
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(PostgresTestImage.POSTGRES_18);
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
