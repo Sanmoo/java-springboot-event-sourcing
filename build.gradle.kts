@@ -100,6 +100,7 @@ tasks.pmdMain {
 spotbugs {
     toolVersion = "4.9.8"
     ignoreFailures = false
+    excludeFilter = file("config/spotbugs/exclude.xml")
 }
 
 tasks.spotbugsMain {

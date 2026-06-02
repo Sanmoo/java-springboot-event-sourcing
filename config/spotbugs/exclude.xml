@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/spotbugs"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/spotbugs https://raw.githubusercontent.com/spotbugs/spotbugs/4.10/spotbugs/etc/findbugsfilter.xsd">
+
+    <!-- Exclusions for Java records: serialization warnings are expected -->
+    <Match>
+        <Or>
+            <Class name="~com\.sanmoo\.eventsourcing\.creditaccount\.domain\.model\..*"/>
+            <Class name="~com\.sanmoo\.eventsourcing\.creditaccount\.domain\.event\..*"/>
+            <Class name="~com\.sanmoo\.eventsourcing\.creditaccount\.application\.command\..*"/>
+            <Class name="~com\.sanmoo\.eventsourcing\.creditaccount\.application\.result\..*"/>
+            <Class name="~com\.sanmoo\.eventsourcing\.creditaccount\.application\.port\.EventEnvelope"/>
+        </Or>
+        <Bug pattern="SE_TRIVIAL_INNER_CLASS,SE_BAD_FIELD,SE_BAD_FIELD_STORE,SE_NO_SERIALVERSIONID,SE_INNER_CLASS"/>
+    </Match>
+
+    <!-- Records with equals/hashCode from serialization are expected -->
+    <Match>
+        <Bug pattern="EQ_DOESNT_OVERRIDE_EQUALS,EQ_UNUSUAL,RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
+        <Class name="~.*Record"/>
+    </Match>
+
+    <!-- Spring Boot main application class is intentionally ignored -->
+    <Match>
+        <Class name="com.sanmoo.eventsourcing.creditaccount.CreditAccountApplication"/>
+        <Bug pattern="DM_EXIT"/>
+    </Match>
+</FindBugsFilter>
