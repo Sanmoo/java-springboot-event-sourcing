@@ -71,6 +71,10 @@ public final class CreditAccount {
         return List.of(new PaymentReceived(id, amount, occurredAt));
     }
 
+    public void applyAll(List<CreditAccountEvent> events) {
+        events.forEach(event -> { apply(event); version++; });
+    }
+
     public CreditAccountSnapshot snapshot() {
         return new CreditAccountSnapshot(id, opened, creditLimit, outstandingBalance, authorizedAmount, availableLimit(), Map.copyOf(authorizations));
     }
@@ -78,6 +82,9 @@ public final class CreditAccount {
     public long version() { return version; }
 
     private Money availableLimit() {
+        if (creditLimit == null) {
+            return Money.zero();
+        }
         return creditLimit.minus(outstandingBalance).minus(authorizedAmount);
     }
 
