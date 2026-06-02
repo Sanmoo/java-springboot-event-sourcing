@@ -5,3 +5,7 @@ build/
 
 HELP.md
 gradlew.bat
+.classpath
+.project
+.settings/
+bin/
