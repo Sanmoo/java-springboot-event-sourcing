@@ -2,8 +2,8 @@
 
 A practice project implementing **event sourcing** with **ports and adapters** architecture using:
 
-- **Java 21** + **Spring Boot 4.0.6**
-- **PostgreSQL** + **Liquibase**
+- **Java 25 LTS** + **Spring Boot 4.0.6**
+- **PostgreSQL 18** + **Liquibase**
 - **Gradle Kotlin DSL**
 
 ## Domain
@@ -49,7 +49,9 @@ All `POST` endpoints require `Idempotency-Key` header.
 ## Running
 
 ```bash
-# Tests (uses Testcontainers — requires Docker)
+# Tests require:
+# - JDK 25 installed locally
+# - Docker for Testcontainers
 ./gradlew test
 ```
 
@@ -57,5 +59,5 @@ All `POST` endpoints require `Idempotency-Key` header.
 
 - **Domain tests**: Given-When-Then style, event-sourced aggregate behavior
 - **Application tests**: Command service orchestration with fake ports
-- **Integration tests**: Real PostgreSQL via Testcontainers (event store + idempotency)
+- **Integration tests**: Real PostgreSQL 18 via Testcontainers (event store + idempotency)
 - **REST tests**: Full happy path with `@SpringBootTest(webEnvironment = RANDOM_PORT)`
