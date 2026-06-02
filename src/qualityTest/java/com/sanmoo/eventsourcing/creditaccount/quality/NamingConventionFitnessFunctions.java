@@ -6,6 +6,7 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 
+@SuppressWarnings("UnusedVariable") // ArchUnit reads @ArchTest fields reflectively
 @AnalyzeClasses(packages = "com.sanmoo.eventsourcing.creditaccount")
 public class NamingConventionFitnessFunctions {
 

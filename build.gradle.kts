@@ -115,6 +115,9 @@ tasks.withType<JavaCompile>().configureEach {
         allErrorsAsWarnings = false
         disableWarningsInGeneratedCode = true
     }
+    // NOTE: allWarningsAsErrors is not available in the Error Prone Gradle plugin 5.1.0 DSL.
+    // Errors still fail the build; warnings are shown but non-blocking.
+    // Revisit when plugin adds this option.
 }
 
 pitest {
