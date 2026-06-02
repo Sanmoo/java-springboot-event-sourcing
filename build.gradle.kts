@@ -112,6 +112,7 @@ tasks.spotbugsMain {
 tasks.withType<JavaCompile>().configureEach {
     options.errorprone {
         allErrorsAsWarnings = false
+        allWarningsAsErrors = true
         disableWarningsInGeneratedCode = true
     }
 }
