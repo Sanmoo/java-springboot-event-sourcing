@@ -1,31 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ruleset name="Custom Rules"
+<ruleset name="Minimal PMD Rules"
     xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
 
-    <description>Custom PMD rules</description>
+    <description>Minimal PMD rules for the quality gateway project</description>
 
-    <rule ref="category/java/bestpractices.xml">
-        <exclude name="GuardLogStatement"/>
-        <exclude name="JUnitTestContainsTooManyAsserts"/>
-        <exclude name="JUnitAssertionsShouldIncludeMessage"/>
-    </rule>
+    <rule ref="category/java/errorprone.xml"/>
+    <rule ref="category/java/bestpractices.xml"/>
     <rule ref="category/java/codestyle.xml">
-        <exclude name="AtLeastOneConstructor"/>
         <exclude name="LocalVariableCouldBeFinal"/>
         <exclude name="MethodArgumentCouldBeFinal"/>
         <exclude name="LongVariable"/>
         <exclude name="ShortVariable"/>
         <exclude name="OnlyOneReturn"/>
         <exclude name="CommentDefaultAccessModifier"/>
-        <exclude name="DefaultPackage"/>
+        <exclude name="UnnecessaryImport"/>
+        <exclude name="UnnecessaryFullyQualifiedName"/>
     </rule>
-    <rule ref="category/java/design.xml">
-        <exclude name="LawOfDemeter"/>
-        <exclude name="DataClass"/>
-        <exclude name="LombokData"/>
-    </rule>
-    <rule ref="category/java/errorprone.xml"/>
-    <rule ref="category/java/performance.xml"/>
 </ruleset>

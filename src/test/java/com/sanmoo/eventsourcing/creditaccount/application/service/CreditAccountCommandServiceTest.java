@@ -11,6 +11,7 @@ import com.sanmoo.eventsourcing.creditaccount.application.command.ReleasePurchas
 import com.sanmoo.eventsourcing.creditaccount.application.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.application.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.application.port.EventStorePort;
+import com.sanmoo.eventsourcing.creditaccount.application.error.IdempotencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.application.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.application.port.IdempotencyPort;
 import com.sanmoo.eventsourcing.creditaccount.application.result.CommandResult;
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -425,5 +427,39 @@ class CreditAccountCommandServiceTest {
         assertThat(result.responseData())
                 .containsEntry("creditAccountId", "550e8400-e29b-41d4-a716-446655440000")
                 .containsEntry("opened", true);
+    }
+
+    @Test
+    void conflictingIdempotencyKeyThrowsException() {
+        // Arrange
+        OpenCreditAccountCommand command = new OpenCreditAccountCommand("key-conflict");
+        when(idempotencyPort.start(eq("key-conflict"), eq("OpenCreditAccount"), any(), any()))
+                .thenReturn(new IdempotencyDecision.Conflict("reused with different payload"));
+
+        // Act & Assert
+        assertThatThrownBy(() -> service.openCreditAccount(command))
+                .isInstanceOf(IdempotencyConflictException.class)
+                .hasMessageContaining("reused with different payload");
+    }
+
+    @Test
+    void getAccountReturnsSnapshotForExistingAccount() {
+        // Arrange
+        String aggregateId = UUID.randomUUID().toString();
+        CreditAccountId accountId = CreditAccountId.of(UUID.fromString(aggregateId));
+        when(eventStore.loadEvents(eq("CreditAccount"), eq(aggregateId)))
+                .thenReturn(List.of(
+                        envelope(0L, new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")), aggregateId),
+                        envelope(1L, new CreditLimitAssigned(accountId, Money.of("500.00"), Instant.parse("2026-06-01T10:01:00Z")), aggregateId)
+                ));
+
+        // Act
+        Map<String, Object> result = service.getAccount(aggregateId);
+
+        // Assert
+        assertThat(result)
+                .containsEntry("creditAccountId", aggregateId)
+                .containsEntry("opened", true);
+        assertThat(result.get("creditLimit")).isEqualTo("500.00");
     }
 }
