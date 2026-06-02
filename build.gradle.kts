@@ -1,39 +1,138 @@
+import net.ltgt.gradle.errorprone.errorprone
+import com.github.spotbugs.snom.Effort
+import com.github.spotbugs.snom.Confidence
+
 plugins {
-	java
-	id("org.springframework.boot") version "4.0.6"
-	id("io.spring.dependency-management") version "1.1.7"
+    java
+    id("org.springframework.boot") version "4.0.6"
+    id("io.spring.dependency-management") version "1.1.7"
+    checkstyle
+    pmd
+    id("com.github.spotbugs") version "6.5.5"
+    id("net.ltgt.errorprone") version "5.1.0"
+    id("info.solidsoft.pitest") version "1.19.0"
 }
 
 group = "com.sanmoo.eventsourcing"
 version = "0.0.1-SNAPSHOT"
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(25)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
+}
+
+sourceSets {
+    create("qualityTest") {
+        java {
+            compileClasspath += sourceSets.main.get().output
+            runtimeClasspath += sourceSets.main.get().output
+        }
+    }
 }
 
 dependencies {
-	implementation("org.springframework.boot:spring-boot-starter-jdbc")
-	implementation("org.springframework.boot:spring-boot-starter-liquibase")
-	implementation("org.springframework.boot:spring-boot-starter-validation")
-	implementation("org.springframework.boot:spring-boot-starter-webmvc")
-	runtimeOnly("org.postgresql:postgresql")
-	testImplementation("org.springframework.boot:spring-boot-starter-jdbc-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-liquibase-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-	testImplementation("org.springframework.boot:spring-boot-testcontainers")
-	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
-	testImplementation("org.testcontainers:testcontainers-postgresql")
-	testImplementation("org.assertj:assertj-core")
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    implementation("org.springframework.boot:spring-boot-starter-liquibase")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    runtimeOnly("org.postgresql:postgresql")
+    testImplementation("org.springframework.boot:spring-boot-starter-jdbc-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-liquibase-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-postgresql")
+    testImplementation("org.assertj:assertj-core")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    errorprone("com.google.errorprone:error_prone_core:2.38.0")
+    add("qualityTestImplementation", "com.tngtech.archunit:archunit-junit5:1.4.2")
+}
+
+configurations {
+    named("qualityTestImplementation") {
+        extendsFrom(configurations.testImplementation.get())
+    }
+    named("qualityTestRuntimeOnly") {
+        extendsFrom(configurations.testRuntimeOnly.get())
+    }
 }
 
 tasks.withType<Test> {
-	useJUnitPlatform()
+    useJUnitPlatform()
+}
+
+tasks.register<Test>("qualityTest") {
+    description = "Runs ArchUnit architecture fitness functions"
+    group = "verification"
+    testClassesDirs = sourceSets["qualityTest"].output.classesDirs
+    classpath = sourceSets["qualityTest"].runtimeClasspath
+    useJUnitPlatform()
+    shouldRunAfter(tasks.test)
+}
+
+checkstyle {
+    toolVersion = "10.23.0"
+    maxErrors = 0
+    maxWarnings = 0
+}
+
+pmd {
+    toolVersion = "7.12.0"
+    isConsoleOutput = true
+    ruleSets = listOf()
+    ruleSetConfig = resources.text.fromFile(file("config/pmd/pmd.xml"))
+    isIgnoreFailures = false
+}
+
+tasks.pmdMain {
+    reports {
+        html.required = true
+        xml.required = false
+    }
+}
+
+spotbugs {
+    toolVersion = "4.9.8"
+    ignoreFailures = false
+}
+
+tasks.spotbugsMain {
+    effort = Effort.MAX
+    reportLevel = Confidence.MEDIUM
+    reports.create("html") { required = true }
+    reports.create("xml") { required = false }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.errorprone {
+        allErrorsAsWarnings = false
+        disableWarningsInGeneratedCode = true
+    }
+}
+
+pitest {
+    pitestVersion = "1.19.5"
+    junit5PluginVersion = "1.2.1"
+    targetClasses = setOf("com.sanmoo.eventsourcing.creditaccount.domain.*", "com.sanmoo.eventsourcing.creditaccount.application.*")
+    excludedClasses = setOf(
+        "com.sanmoo.eventsourcing.creditaccount.domain.model.*",
+        "com.sanmoo.eventsourcing.creditaccount.domain.error.*",
+        "com.sanmoo.eventsourcing.creditaccount.application.command.*",
+        "com.sanmoo.eventsourcing.creditaccount.application.result.*",
+        "com.sanmoo.eventsourcing.creditaccount.application.error.*"
+    )
+    mutators = setOf("ALL")
+    mutationThreshold = 80
+    outputFormats = setOf("HTML")
+    timestampedReports = false
+}
+
+tasks.check {
+    dependsOn("qualityTest", "pitest")
 }
