@@ -87,7 +87,7 @@ pmd {
     isConsoleOutput = true
     ruleSets = listOf()
     ruleSetConfig = resources.text.fromFile(file("config/pmd/pmd.xml"))
-    isIgnoreFailures = true  // TODO: configure PMD properly after fixing violations
+    isIgnoreFailures = false
 }
 
 tasks.pmdMain {

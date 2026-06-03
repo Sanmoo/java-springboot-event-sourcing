@@ -84,7 +84,7 @@ public class EventTypeMapper {
 
     public Map<String, String> deserializeMetadata(String metadataJson) {
         try {
-            return objectMapper.readValue(metadataJson, new TypeReference<Map<String, String>>() {});
+            return objectMapper.readValue(metadataJson, new TypeReference<>() {});
         } catch (JacksonException e) {
             throw new RuntimeException("Failed to deserialize metadata", e);
         }
