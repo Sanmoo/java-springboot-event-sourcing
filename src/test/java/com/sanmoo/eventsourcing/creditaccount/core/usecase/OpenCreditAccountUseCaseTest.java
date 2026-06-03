@@ -1,0 +1,83 @@
+package com.sanmoo.eventsourcing.creditaccount.core.usecase;
+
+import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import tools.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+class OpenCreditAccountUseCaseTest {
+
+    private EventStorePort eventStore;
+    private IdempotencyPort idempotencyPort;
+    private ObjectMapper objectMapper;
+    private CreditAccountUseCaseSupport support;
+    private OpenCreditAccountUseCase useCase;
+
+    @BeforeEach
+    void setUp() {
+        eventStore = mock(EventStorePort.class);
+        idempotencyPort = mock(IdempotencyPort.class);
+        objectMapper = new ObjectMapper();
+        support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
+        useCase = new OpenCreditAccountUseCase(support);
+    }
+
+    @Test
+    void executeAppendsCreditAccountOpenedAtExpectedVersionZero() {
+        when(idempotencyPort.start(any(), eq("OpenCreditAccount"), any(), any()))
+                .thenReturn(new IdempotencyDecision.Started("key-1"));
+        when(eventStore.loadEvents(any(), any())).thenReturn(List.of());
+        when(eventStore.appendEvents(any(), any(), anyLong(), anyList(), anyMap()))
+                .thenReturn(new AppendResult(1L));
+
+        var input = new OpenCreditAccountInput("key-1");
+        var output = useCase.execute(input);
+
+        verify(eventStore).appendEvents(
+                eq("CreditAccount"),
+                anyString(),
+                eq(0L),
+                argThat(events -> events.size() == 1),
+                anyMap()
+        );
+        assertThat(output.account().creditAccountId()).isNotNull();
+        assertThat(output.replayed()).isFalse();
+    }
+
+    @Test
+    void sameIdempotencyKeyAndHashReturnsReplayedOutput() throws Exception {
+        var previousData = new java.util.LinkedHashMap<String, Object>();
+        previousData.put("creditAccountId", "550e8400-e29b-41d4-a716-446655440000");
+        previousData.put("opened", true);
+        previousData.put("creditLimit", null);
+        previousData.put("outstandingBalance", "0.00");
+        previousData.put("authorizedAmount", "0.00");
+        previousData.put("availableLimit", "0.00");
+        previousData.put("authorizations", List.of());
+        var previousPayload = objectMapper.writeValueAsString(Map.of(
+                "aggregateId", "550e8400-e29b-41d4-a716-446655440000",
+                "aggregateVersion", 1,
+                "responseData", previousData
+        ));
+
+        when(idempotencyPort.start(any(), eq("OpenCreditAccount"), any(), any()))
+                .thenReturn(new IdempotencyDecision.Replay(previousPayload));
+
+        var input = new OpenCreditAccountInput("key-2");
+        var output = useCase.execute(input);
+
+        verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
+        assertThat(output.account().creditAccountId()).isEqualTo("550e8400-e29b-41d4-a716-446655440000");
+        assertThat(output.replayed()).isTrue();
+    }
+}
