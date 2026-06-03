@@ -1,7 +1,10 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 
+@Service
 public class ChangeCreditLimitUseCase {
 
     private final CreditAccountUseCaseSupport support;

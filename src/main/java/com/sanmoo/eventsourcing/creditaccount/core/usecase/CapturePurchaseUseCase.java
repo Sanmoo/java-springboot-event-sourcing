@@ -1,7 +1,10 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 
+@Service
 public class CapturePurchaseUseCase {
 
     private final CreditAccountUseCaseSupport support;

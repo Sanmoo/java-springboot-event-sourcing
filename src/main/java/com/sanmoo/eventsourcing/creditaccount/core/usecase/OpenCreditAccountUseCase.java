@@ -1,9 +1,12 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import org.springframework.stereotype.Service;
+
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 
 import java.time.Instant;
 
+@Service
 public class OpenCreditAccountUseCase {
 
     private final CreditAccountUseCaseSupport support;

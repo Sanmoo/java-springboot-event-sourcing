@@ -1,5 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import org.springframework.stereotype.Service;
+
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
@@ -22,6 +24,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Service
 public class CreditAccountUseCaseSupport {
 
     private static final String AGGREGATE_TYPE = "CreditAccount";

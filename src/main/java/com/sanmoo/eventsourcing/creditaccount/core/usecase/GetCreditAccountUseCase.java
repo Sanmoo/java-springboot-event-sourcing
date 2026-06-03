@@ -1,5 +1,8 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public class GetCreditAccountUseCase {
 
     private final CreditAccountUseCaseSupport support;
