@@ -1,6 +1,5 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
-import com.sanmoo.eventsourcing.creditaccount.domain.CreditAccount;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 
 import java.time.Instant;

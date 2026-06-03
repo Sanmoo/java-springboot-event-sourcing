@@ -8,9 +8,9 @@
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Or>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.application.port.EventEnvelope"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.application.result.CommandResult"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.application.result.CreditAccountResult"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.CreditAccountOutput"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.PurchaseAuthorizationOutput"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountSnapshot"/>
         </Or>
     </Match>
@@ -22,17 +22,17 @@
             <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.EventTypeMapper"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcEventStoreAdapter"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcIdempotencyAdapter"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.application.port.EventEnvelope"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.application.result.CommandResult"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.application.result.CreditAccountResult"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.CreditAccountOutput"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.PurchaseAuthorizationOutput"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountSnapshot"/>
         </Or>
     </Match>
 
-    <!-- Service returns Map-based response data — intentional design -->
+    <!-- Core use case support returns Map-based response data — intentional design -->
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="com.sanmoo.eventsourcing.creditaccount.application.service.CreditAccountCommandService"/>
+        <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.CreditAccountUseCaseSupport"/>
     </Match>
 
     <!-- Spring Boot main application class is intentionally ignored -->

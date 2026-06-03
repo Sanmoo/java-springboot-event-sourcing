@@ -15,7 +15,6 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -127,7 +126,6 @@ public class CreditAccountUseCaseSupport {
     private ExecutionResult deserializeReplay(IdempotencyDecision.Replay replay) {
         try {
             Map<String, Object> raw = objectMapper.readValue(replay.responsePayload(), objectMapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, Object.class));
-            String aggregateId = (String) raw.get("aggregateId");
             long aggregateVersion = ((Number) raw.get("aggregateVersion")).longValue();
             @SuppressWarnings("unchecked")
             Map<String, Object> responseData = (Map<String, Object>) raw.get("responseData");

@@ -11,16 +11,18 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 public class NamingConventionFitnessFunctions {
 
     @ArchTest
-    private static final ArchRule commands_must_be_records = classes()
-            .that().resideInAPackage("..application.command..")
+    private static final ArchRule use_case_inputs_must_be_records = classes()
+            .that().resideInAPackage("..core.usecase..")
+            .and().haveSimpleNameEndingWith("Input")
             .should().beRecords()
-            .because("commands are immutable data carriers and should be records");
+            .because("use case inputs are immutable data carriers and should be records");
 
     @ArchTest
-    private static final ArchRule commands_must_have_command_suffix = classes()
-            .that().resideInAPackage("..application.command..")
-            .should().haveSimpleNameEndingWith("Command")
-            .because("all command classes should follow the *Command naming convention");
+    private static final ArchRule use_case_outputs_must_be_records = classes()
+            .that().resideInAPackage("..core.usecase..")
+            .and().haveSimpleNameEndingWith("Output")
+            .should().beRecords()
+            .because("use case outputs are immutable data carriers and should be records");
 
     @ArchTest
     private static final ArchRule domain_exceptions_must_extend_DomainException = classes()
@@ -32,10 +34,10 @@ public class NamingConventionFitnessFunctions {
             .because("all domain exceptions must extend the base DomainException");
 
     @ArchTest
-    private static final ArchRule application_exceptions_must_extend_RuntimeException = classes()
-            .that().resideInAPackage("..application.error..")
+    private static final ArchRule core_exceptions_must_extend_RuntimeException = classes()
+            .that().resideInAPackage("..core.error..")
             .should().beAssignableTo(RuntimeException.class)
-            .because("application errors should extend RuntimeException");
+            .because("core errors should extend RuntimeException");
 
     @ArchTest
     private static final ArchRule root_package_should_only_contain_application_class = classes()
