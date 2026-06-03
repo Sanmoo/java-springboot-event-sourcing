@@ -1,0 +1,32 @@
+package com.sanmoo.eventsourcing.creditaccount.core.usecase;
+
+import java.time.Instant;
+
+public class AuthorizePurchaseUseCase {
+
+    private final CreditAccountUseCaseSupport support;
+
+    public AuthorizePurchaseUseCase(CreditAccountUseCaseSupport support) {
+        this.support = support;
+    }
+
+    public AuthorizePurchaseOutput execute(AuthorizePurchaseInput input) {
+        return support.executeIdempotent(
+                input.idempotencyKey(),
+                "AuthorizePurchase",
+                input.creditAccountId(),
+                input,
+                account -> account.authorizePurchase(
+                        input.authorizationId(), input.amount(), input.merchantName(), now()),
+                result -> new AuthorizePurchaseOutput(
+                        result.output(),
+                        input.authorizationId().value().toString(),
+                        result.replayed()
+                )
+        );
+    }
+
+    private Instant now() {
+        return Instant.now();
+    }
+}
