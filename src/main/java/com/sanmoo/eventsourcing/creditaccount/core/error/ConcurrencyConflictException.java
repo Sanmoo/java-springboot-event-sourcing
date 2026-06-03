@@ -1,4 +1,4 @@
-package com.sanmoo.eventsourcing.creditaccount.application.error;
+package com.sanmoo.eventsourcing.creditaccount.core.error;
 
 public class ConcurrencyConflictException extends RuntimeException {
     public ConcurrencyConflictException(String aggregateType, String aggregateId, long expectedVersion) {

@@ -1,4 +1,4 @@
-package com.sanmoo.eventsourcing.creditaccount.application.error;
+package com.sanmoo.eventsourcing.creditaccount.core.error;
 
 public class IdempotencyConflictException extends RuntimeException {
     public IdempotencyConflictException(String message) {

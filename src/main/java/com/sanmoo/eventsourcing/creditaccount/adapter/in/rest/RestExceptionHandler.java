@@ -1,7 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
-import com.sanmoo.eventsourcing.creditaccount.application.error.ConcurrencyConflictException;
-import com.sanmoo.eventsourcing.creditaccount.application.error.IdempotencyConflictException;
+import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
+import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountAlreadyExistsException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.DomainException;

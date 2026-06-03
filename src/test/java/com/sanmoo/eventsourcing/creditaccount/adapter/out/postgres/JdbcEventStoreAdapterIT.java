@@ -3,10 +3,10 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.sanmoo.eventsourcing.creditaccount.application.error.ConcurrencyConflictException;
-import com.sanmoo.eventsourcing.creditaccount.application.port.AppendResult;
-import com.sanmoo.eventsourcing.creditaccount.application.port.EventEnvelope;
-import com.sanmoo.eventsourcing.creditaccount.application.port.EventStorePort;
+import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
+import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import java.time.Instant;

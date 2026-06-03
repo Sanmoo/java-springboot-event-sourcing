@@ -1,4 +1,4 @@
-package com.sanmoo.eventsourcing.creditaccount.application.port;
+package com.sanmoo.eventsourcing.creditaccount.core.port;
 
 public sealed interface IdempotencyDecision permits IdempotencyDecision.Started, IdempotencyDecision.Replay, IdempotencyDecision.Conflict {
     record Started(String key) implements IdempotencyDecision {}

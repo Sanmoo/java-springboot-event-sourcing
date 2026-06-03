@@ -1,4 +1,4 @@
-package com.sanmoo.eventsourcing.creditaccount.application.port;
+package com.sanmoo.eventsourcing.creditaccount.core.port;
 
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
 import java.time.Instant;
