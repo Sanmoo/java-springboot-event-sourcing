@@ -1,9 +1,9 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
-import com.sanmoo.eventsourcing.creditaccount.application.error.ConcurrencyConflictException;
-import com.sanmoo.eventsourcing.creditaccount.application.port.AppendResult;
-import com.sanmoo.eventsourcing.creditaccount.application.port.EventEnvelope;
-import com.sanmoo.eventsourcing.creditaccount.application.port.EventStorePort;
+import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
+import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
 import java.sql.ResultSet;
 import java.sql.SQLException;

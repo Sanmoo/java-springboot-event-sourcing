@@ -3,8 +3,8 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
-import com.sanmoo.eventsourcing.creditaccount.application.port.IdempotencyDecision;
-import com.sanmoo.eventsourcing.creditaccount.application.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

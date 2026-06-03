@@ -17,16 +17,16 @@ public class ArchitectureFitnessFunctions {
             .resideInAnyPackage("java..", "com.sanmoo.eventsourcing.creditaccount.domain..");
 
     @ArchTest
-    private static final ArchRule application_must_not_depend_on_adapters = classes()
-            .that().resideInAPackage("..application..")
+    private static final ArchRule core_must_not_depend_on_adapters = classes()
+            .that().resideInAPackage("..core..")
             .should().onlyDependOnClassesThat()
             .resideInAnyPackage(
                     "java..",
                     "com.sanmoo.eventsourcing.creditaccount.domain..",
-                    "com.sanmoo.eventsourcing.creditaccount.application..",
+                    "com.sanmoo.eventsourcing.creditaccount.core..",
                     "tools.jackson.."  // required for idempotency serialization; consider extracting serialization port
             )
-            .because("application must not depend on inbound or outbound adapters");
+            .because("core must not depend on inbound or outbound adapters");
 
     @ArchTest
     private static final ArchRule inbound_adapters_must_not_depend_on_outbound = classes()
@@ -35,7 +35,7 @@ public class ArchitectureFitnessFunctions {
             .resideInAnyPackage(
                     "java..",
                     "com.sanmoo.eventsourcing.creditaccount.adapter.in..",
-                    "com.sanmoo.eventsourcing.creditaccount.application..",
+                    "com.sanmoo.eventsourcing.creditaccount.core..",
                     "com.sanmoo.eventsourcing.creditaccount.domain..",
                     "org.springframework..",
                     "tools.jackson..",
@@ -50,7 +50,7 @@ public class ArchitectureFitnessFunctions {
             .resideInAnyPackage(
                     "java..",
                     "com.sanmoo.eventsourcing.creditaccount.adapter.out..",
-                    "com.sanmoo.eventsourcing.creditaccount.application..",
+                    "com.sanmoo.eventsourcing.creditaccount.core..",
                     "com.sanmoo.eventsourcing.creditaccount.domain..",
                     "org.springframework..",
                     "tools.jackson.."
@@ -58,10 +58,10 @@ public class ArchitectureFitnessFunctions {
 
     @ArchTest
     private static final ArchRule ports_must_be_interfaces_or_records = classes()
-            .that().resideInAPackage("..application.port..")
+            .that().resideInAPackage("..core.port..")
             .and().areNotRecords()
             .should().beInterfaces()
-            .because("application ports should be interfaces; data records are allowed as records");
+            .because("core ports should be interfaces; data records are allowed as records");
 
     @ArchTest
     private static final ArchRule domain_events_must_be_records = classes()

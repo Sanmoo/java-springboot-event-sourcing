@@ -1,7 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
-import com.sanmoo.eventsourcing.creditaccount.application.port.IdempotencyDecision;
-import com.sanmoo.eventsourcing.creditaccount.application.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;

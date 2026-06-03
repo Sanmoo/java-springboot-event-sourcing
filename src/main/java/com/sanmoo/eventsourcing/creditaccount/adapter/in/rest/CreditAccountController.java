@@ -1,8 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.*;
-import com.sanmoo.eventsourcing.creditaccount.application.command.*;
-import com.sanmoo.eventsourcing.creditaccount.application.service.CreditAccountCommandService;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.*;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,22 +16,42 @@ import java.util.UUID;
 @RequestMapping("/credit-accounts")
 public class CreditAccountController {
 
-    private final CreditAccountCommandService commandService;
+    private final OpenCreditAccountUseCase openCreditAccountUseCase;
+    private final AssignCreditLimitUseCase assignCreditLimitUseCase;
+    private final AuthorizePurchaseUseCase authorizePurchaseUseCase;
+    private final CapturePurchaseUseCase capturePurchaseUseCase;
+    private final ReleasePurchaseAuthorizationUseCase releasePurchaseAuthorizationUseCase;
+    private final ReceivePaymentUseCase receivePaymentUseCase;
+    private final GetCreditAccountUseCase getCreditAccountUseCase;
 
-    public CreditAccountController(CreditAccountCommandService commandService) {
-        this.commandService = commandService;
+    public CreditAccountController(
+            OpenCreditAccountUseCase openCreditAccountUseCase,
+            AssignCreditLimitUseCase assignCreditLimitUseCase,
+            AuthorizePurchaseUseCase authorizePurchaseUseCase,
+            CapturePurchaseUseCase capturePurchaseUseCase,
+            ReleasePurchaseAuthorizationUseCase releasePurchaseAuthorizationUseCase,
+            ReceivePaymentUseCase receivePaymentUseCase,
+            GetCreditAccountUseCase getCreditAccountUseCase
+    ) {
+        this.openCreditAccountUseCase = openCreditAccountUseCase;
+        this.assignCreditLimitUseCase = assignCreditLimitUseCase;
+        this.authorizePurchaseUseCase = authorizePurchaseUseCase;
+        this.capturePurchaseUseCase = capturePurchaseUseCase;
+        this.releasePurchaseAuthorizationUseCase = releasePurchaseAuthorizationUseCase;
+        this.receivePaymentUseCase = receivePaymentUseCase;
+        this.getCreditAccountUseCase = getCreditAccountUseCase;
     }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> openCreditAccount(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestBody(required = false) OpenCreditAccountRequest request) {
-        var command = new OpenCreditAccountCommand(idempotencyKey);
-        var result = commandService.openCreditAccount(command);
-        if (result.replayed()) {
-            return ResponseEntity.ok(result.responseData());
+        var input = new OpenCreditAccountInput(idempotencyKey);
+        var output = openCreditAccountUseCase.execute(input);
+        if (output.replayed()) {
+            return ResponseEntity.ok(toMap(output.account()));
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(result.responseData());
+        return ResponseEntity.status(HttpStatus.CREATED).body(toMap(output.account()));
     }
 
     @PostMapping("/{id}/credit-limit")
@@ -41,10 +60,9 @@ public class CreditAccountController {
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody AssignCreditLimitRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
-        var command = new AssignCreditLimitCommand(
-                idempotencyKey, creditAccountId, Money.positive(request.limit()));
-        var result = commandService.assignCreditLimit(command);
-        return ResponseEntity.ok(result.responseData());
+        var input = new AssignCreditLimitInput(idempotencyKey, creditAccountId, Money.positive(request.limit()));
+        var output = assignCreditLimitUseCase.execute(input);
+        return ResponseEntity.ok(toMap(output.account()));
     }
 
     @PostMapping("/{id}/purchases/authorizations")
@@ -54,12 +72,12 @@ public class CreditAccountController {
             @Valid @RequestBody AuthorizePurchaseRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
         var authorizationId = AuthorizationId.of(UUID.fromString(request.authorizationId()));
-        var command = new AuthorizePurchaseCommand(
+        var input = new AuthorizePurchaseInput(
                 idempotencyKey, creditAccountId, authorizationId,
                 Money.positive(request.amount()), request.merchantName());
-        var result = commandService.authorizePurchase(command);
-        Map<String, Object> response = new LinkedHashMap<>(result.responseData());
-        response.put("authorizationId", request.authorizationId());
+        var output = authorizePurchaseUseCase.execute(input);
+        Map<String, Object> response = new LinkedHashMap<>(toMap(output.account()));
+        response.put("authorizationId", output.authorizationId());
         return ResponseEntity.ok(response);
     }
 
@@ -71,9 +89,9 @@ public class CreditAccountController {
             @RequestBody(required = false) CapturePurchaseRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
         var authId = AuthorizationId.of(UUID.fromString(authorizationId));
-        var command = new CapturePurchaseCommand(idempotencyKey, creditAccountId, authId);
-        var result = commandService.capturePurchase(command);
-        return ResponseEntity.ok(result.responseData());
+        var input = new CapturePurchaseInput(idempotencyKey, creditAccountId, authId);
+        var output = capturePurchaseUseCase.execute(input);
+        return ResponseEntity.ok(toMap(output.account()));
     }
 
     @PostMapping("/{id}/purchases/authorizations/{authorizationId}/release")
@@ -84,9 +102,9 @@ public class CreditAccountController {
             @RequestBody(required = false) ReleasePurchaseAuthorizationRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
         var authId = AuthorizationId.of(UUID.fromString(authorizationId));
-        var command = new ReleasePurchaseAuthorizationCommand(idempotencyKey, creditAccountId, authId);
-        var result = commandService.releasePurchaseAuthorization(command);
-        return ResponseEntity.ok(result.responseData());
+        var input = new ReleasePurchaseAuthorizationInput(idempotencyKey, creditAccountId, authId);
+        var output = releasePurchaseAuthorizationUseCase.execute(input);
+        return ResponseEntity.ok(toMap(output.account()));
     }
 
     @PostMapping("/{id}/payments")
@@ -95,15 +113,37 @@ public class CreditAccountController {
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody ReceivePaymentRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
-        var command = new ReceivePaymentCommand(
-                idempotencyKey, creditAccountId, Money.positive(request.amount()));
-        var result = commandService.receivePayment(command);
-        return ResponseEntity.ok(result.responseData());
+        var input = new ReceivePaymentInput(idempotencyKey, creditAccountId, Money.positive(request.amount()));
+        var output = receivePaymentUseCase.execute(input);
+        return ResponseEntity.ok(toMap(output.account()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getAccount(@PathVariable String id) {
-        var response = commandService.getAccount(id);
-        return ResponseEntity.ok(response);
+        var creditAccountId = CreditAccountId.of(UUID.fromString(id));
+        var input = new GetCreditAccountInput(creditAccountId);
+        var output = getCreditAccountUseCase.execute(input);
+        return ResponseEntity.ok(toMap(output.account()));
+    }
+
+    private Map<String, Object> toMap(CreditAccountOutput output) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("creditAccountId", output.creditAccountId());
+        data.put("opened", output.opened());
+        data.put("creditLimit", output.creditLimit());
+        data.put("outstandingBalance", output.outstandingBalance());
+        data.put("authorizedAmount", output.authorizedAmount());
+        data.put("availableLimit", output.availableLimit());
+        data.put("authorizations", output.authorizations().stream()
+                .map(auth -> {
+                    Map<String, Object> authMap = new LinkedHashMap<>();
+                    authMap.put("authorizationId", auth.authorizationId());
+                    authMap.put("amount", auth.amount());
+                    authMap.put("status", auth.status());
+                    authMap.put("merchantName", auth.merchantName());
+                    return authMap;
+                })
+                .toList());
+        return data;
     }
 }

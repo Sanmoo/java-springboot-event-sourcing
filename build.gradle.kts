@@ -123,13 +123,12 @@ tasks.withType<JavaCompile>().configureEach {
 pitest {
     pitestVersion = "1.25.3"
     junit5PluginVersion = "1.2.1"
-    targetClasses = setOf("com.sanmoo.eventsourcing.creditaccount.domain.*", "com.sanmoo.eventsourcing.creditaccount.application.*")
+    targetClasses = setOf("com.sanmoo.eventsourcing.creditaccount.domain.*", "com.sanmoo.eventsourcing.creditaccount.core.*")
     excludedClasses = setOf(
         "com.sanmoo.eventsourcing.creditaccount.domain.model.*",
         "com.sanmoo.eventsourcing.creditaccount.domain.error.*",
-        "com.sanmoo.eventsourcing.creditaccount.application.command.*",
-        "com.sanmoo.eventsourcing.creditaccount.application.result.*",
-        "com.sanmoo.eventsourcing.creditaccount.application.error.*"
+        "com.sanmoo.eventsourcing.creditaccount.core.error.*",
+        "com.sanmoo.eventsourcing.creditaccount.core.port.*"
     )
     mutators = setOf("ALL")
     mutationThreshold = 72
