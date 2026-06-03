@@ -131,7 +131,7 @@ pitest {
         "com.sanmoo.eventsourcing.creditaccount.core.port.*"
     )
     mutators = setOf("ALL")
-    mutationThreshold = 72
+    mutationThreshold = 80
     outputFormats = setOf("HTML")
     timestampedReports = false
 }
