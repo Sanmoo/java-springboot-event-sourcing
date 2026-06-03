@@ -25,30 +25,30 @@ public final class CreditAccount {
     }
 
     public List<CreditAccountEvent> open(Instant occurredAt) {
-        if (opened) throw new AccountAlreadyExistsException("credit account already exists");
+        if (opened) { throw new AccountAlreadyExistsException("credit account already exists"); }
         return List.of(new CreditAccountOpened(id, occurredAt));
     }
 
     public List<CreditAccountEvent> assignCreditLimit(Money limit, Instant occurredAt) {
         ensureOpened();
-        if (creditLimit != null) throw new CreditLimitAlreadyAssignedException("credit limit already assigned");
-        if (!limit.isGreaterThan(Money.zero())) throw new InvalidCreditLimitException("credit limit must be positive");
+        if (creditLimit != null) { throw new CreditLimitAlreadyAssignedException("credit limit already assigned"); }
+        if (!limit.isGreaterThan(Money.zero())) { throw new InvalidCreditLimitException("credit limit must be positive"); }
         return List.of(new CreditLimitAssigned(id, limit, occurredAt));
     }
 
     public List<CreditAccountEvent> changeCreditLimit(Money newLimit, Instant occurredAt) {
         ensureOpened(); ensureLimitAssigned();
-        if (!newLimit.isGreaterThan(Money.zero())) throw new InvalidCreditLimitException("credit limit must be positive");
+        if (!newLimit.isGreaterThan(Money.zero())) { throw new InvalidCreditLimitException("credit limit must be positive"); }
         Money committed = outstandingBalance.plus(authorizedAmount);
-        if (newLimit.isLessThan(committed)) throw new InvalidCreditLimitException("new limit is lower than committed balance");
+        if (newLimit.isLessThan(committed)) { throw new InvalidCreditLimitException("new limit is lower than committed balance"); }
         return List.of(new CreditLimitChanged(id, newLimit, occurredAt));
     }
 
     public List<CreditAccountEvent> authorizePurchase(AuthorizationId authorizationId, Money amount, String merchantName, Instant occurredAt) {
         ensureOpened(); ensureLimitAssigned();
-        if (authorizations.containsKey(authorizationId)) throw new AuthorizationAlreadyExistsException("authorization already exists");
-        if (!amount.isGreaterThan(Money.zero())) throw new InvalidMoneyException("purchase amount must be positive");
-        if (amount.isGreaterThan(availableLimit())) throw new InsufficientAvailableLimitException("insufficient available limit");
+        if (authorizations.containsKey(authorizationId)) { throw new AuthorizationAlreadyExistsException("authorization already exists"); }
+        if (!amount.isGreaterThan(Money.zero())) { throw new InvalidMoneyException("purchase amount must be positive"); }
+        if (amount.isGreaterThan(availableLimit())) { throw new InsufficientAvailableLimitException("insufficient available limit"); }
         return List.of(new PurchaseAuthorized(id, authorizationId, amount, merchantName, occurredAt));
     }
 
@@ -66,8 +66,8 @@ public final class CreditAccount {
 
     public List<CreditAccountEvent> receivePayment(Money amount, Instant occurredAt) {
         ensureOpened();
-        if (!amount.isGreaterThan(Money.zero())) throw new InvalidMoneyException("payment amount must be positive");
-        if (amount.isGreaterThan(outstandingBalance)) throw new PaymentExceedsOutstandingBalanceException("payment exceeds outstanding balance");
+        if (!amount.isGreaterThan(Money.zero())) { throw new InvalidMoneyException("payment amount must be positive"); }
+        if (amount.isGreaterThan(outstandingBalance)) { throw new PaymentExceedsOutstandingBalanceException("payment exceeds outstanding balance"); }
         return List.of(new PaymentReceived(id, amount, occurredAt));
     }
 
@@ -90,13 +90,13 @@ public final class CreditAccount {
 
     private PurchaseAuthorization openAuthorization(AuthorizationId authorizationId) {
         PurchaseAuthorization authorization = authorizations.get(authorizationId);
-        if (authorization == null) throw new AuthorizationNotFoundException("authorization not found");
-        if (authorization.status() != PurchaseAuthorizationStatus.OPEN) throw new AuthorizationNotOpenException("authorization is not open");
+        if (authorization == null) { throw new AuthorizationNotFoundException("authorization not found"); }
+        if (authorization.status() != PurchaseAuthorizationStatus.OPEN) { throw new AuthorizationNotOpenException("authorization is not open"); }
         return authorization;
     }
 
-    private void ensureOpened() { if (!opened) throw new AccountNotFoundException("credit account not found"); }
-    private void ensureLimitAssigned() { if (creditLimit == null) throw new CreditLimitNotAssignedException("credit limit not assigned"); }
+    private void ensureOpened() { if (!opened) { throw new AccountNotFoundException("credit account not found"); } }
+    private void ensureLimitAssigned() { if (creditLimit == null) { throw new CreditLimitNotAssignedException("credit limit not assigned"); } }
 
     private void apply(CreditAccountEvent event) {
         switch (event) {
