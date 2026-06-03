@@ -100,7 +100,7 @@ public final class CreditAccount {
 
     private void apply(CreditAccountEvent event) {
         switch (event) {
-            case CreditAccountOpened ignored -> opened = true;
+            case CreditAccountOpened _ -> opened = true;
             case CreditLimitAssigned e -> creditLimit = e.limit();
             case CreditLimitChanged e -> creditLimit = e.newLimit();
             case PurchaseAuthorized e -> {
