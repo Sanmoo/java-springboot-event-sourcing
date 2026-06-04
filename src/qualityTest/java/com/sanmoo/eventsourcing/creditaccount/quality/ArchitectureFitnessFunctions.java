@@ -55,7 +55,8 @@ public class ArchitectureFitnessFunctions {
                     "com.sanmoo.eventsourcing.creditaccount.core..",
                     "com.sanmoo.eventsourcing.creditaccount.domain..",
                     "org.springframework..",
-                    "tools.jackson.."
+                    "tools.jackson..",
+                    "com.github.f4b6a3.uuid.."
             );
 
     @ArchTest
