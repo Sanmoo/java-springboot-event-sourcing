@@ -4,12 +4,14 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -21,6 +23,7 @@ class OpenCreditAccountUseCaseTest {
     private IdempotencyPort idempotencyPort;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
+    private UniqueIdGenerator uniqueIdGenerator;
     private OpenCreditAccountUseCase useCase;
 
     @BeforeEach
@@ -29,7 +32,8 @@ class OpenCreditAccountUseCaseTest {
         idempotencyPort = mock(IdempotencyPort.class);
         objectMapper = new ObjectMapper();
         support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
-        useCase = new OpenCreditAccountUseCase(support);
+        uniqueIdGenerator = () -> UUID.fromString("018f5f4b-6a3c-7000-8000-000000000001");
+        useCase = new OpenCreditAccountUseCase(support, uniqueIdGenerator);
     }
 
     @Test
@@ -45,12 +49,12 @@ class OpenCreditAccountUseCaseTest {
 
         verify(eventStore).appendEvents(
                 eq("CreditAccount"),
-                anyString(),
+                eq("018f5f4b-6a3c-7000-8000-000000000001"),
                 eq(0L),
                 argThat(events -> events.size() == 1),
                 anyMap()
         );
-        assertThat(output.account().creditAccountId()).isNotNull();
+        assertThat(output.account().creditAccountId()).isEqualTo("018f5f4b-6a3c-7000-8000-000000000001");
         assertThat(output.replayed()).isFalse();
     }
 
