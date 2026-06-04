@@ -41,8 +41,9 @@ databaseChangeLog:
               - column:
                   name: metadata
                   type: JSONB
+                  defaultValueComputed: "'{}'::jsonb"
                   constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: occurred_at
                   type: TIMESTAMP WITH TIME ZONE

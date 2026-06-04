@@ -78,7 +78,7 @@ public class JdbcEventStoreAdapter implements EventStorePort {
 
     private String serializeMetadata(Map<String, String> metadata) {
         if (metadata == null || metadata.isEmpty()) {
-            return null;
+            return "{}";
         }
         return eventTypeMapper.serializeMetadata(metadata);
     }

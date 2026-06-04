@@ -127,6 +127,29 @@ class JdbcEventStoreAdapterIT {
     }
 
     @Test
+    void emptyMetadataIsPersistedAsEmptyJsonObject() {
+        // given
+        var aggregateType = "CreditAccount";
+        var aggregateId = UUID.randomUUID().toString();
+        var creditAccountId = CreditAccountId.of(UUID.randomUUID());
+
+        // when
+        eventStorePort.appendEvents(
+                aggregateType, aggregateId, 0,
+                List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
+                Map.of());
+
+        // then
+        String metadata = jdbcTemplate.queryForObject(
+                "SELECT metadata::text FROM event_store WHERE aggregate_type = ? AND aggregate_id = ?",
+                String.class,
+                aggregateType,
+                aggregateId);
+        assertThat(metadata).isEqualTo("{}");
+        assertThat(eventStorePort.loadEvents(aggregateType, aggregateId).getFirst().metadata()).isEmpty();
+    }
+
+    @Test
     void sameAggregateIdAndVersionAreAllowedForDifferentAggregateTypes() {
         // given
         var aggregateId = UUID.randomUUID().toString();
