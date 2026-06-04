@@ -127,6 +127,28 @@ class JdbcEventStoreAdapterIT {
     }
 
     @Test
+    void sameAggregateIdAndVersionAreAllowedForDifferentAggregateTypes() {
+        // given
+        var aggregateId = UUID.randomUUID().toString();
+        var creditAccountId = CreditAccountId.of(UUID.randomUUID());
+
+        // when
+        eventStorePort.appendEvents(
+                "CreditAccount", aggregateId, 0,
+                List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
+                Map.of());
+        AppendResult result = eventStorePort.appendEvents(
+                "AnotherAggregate", aggregateId, 0,
+                List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
+                Map.of());
+
+        // then
+        assertThat(result.newAggregateVersion()).isEqualTo(1);
+        assertThat(eventStorePort.loadEvents("CreditAccount", aggregateId)).hasSize(1);
+        assertThat(eventStorePort.loadEvents("AnotherAggregate", aggregateId)).hasSize(1);
+    }
+
+    @Test
     void duplicateAggregateVersionThrowsConcurrencyConflict() {
         // given
         var aggregateType = "CreditAccount";

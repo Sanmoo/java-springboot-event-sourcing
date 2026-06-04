@@ -50,8 +50,8 @@ databaseChangeLog:
                     nullable: false
         - addUniqueConstraint:
             tableName: event_store
-            columnNames: aggregate_id, aggregate_version
-            constraintName: uq_event_store_aggregate_id_version
+            columnNames: aggregate_type, aggregate_id, aggregate_version
+            constraintName: uq_event_store_aggregate_type_id_version
         - createIndex:
             tableName: event_store
             indexName: idx_event_store_aggregate
