@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/api.sh"
+
+require_tools
+
+if [[ $# -lt 3 || $# -gt 4 ]]; then
+  usage "$(basename "$0") <credit-account-id> <amount> <merchant-name> [authorization-id]"
+fi
+
+account_id="$1"
+amount="$2"
+merchant_name="$3"
+authorization_id="${4:-$(new_idempotency_key)}"
+body="$(jq -cn \
+  --arg authorizationId "$authorization_id" \
+  --arg amount "$amount" \
+  --arg merchantName "$merchant_name" \
+  '{authorizationId: $authorizationId, amount: $amount, merchantName: $merchantName}')"
+
+api_post "/credit-accounts/${account_id}/purchases/authorizations" "$body"

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/api.sh"
+
+require_tools
+
+if [[ $# -ne 2 ]]; then
+  usage "$(basename "$0") <credit-account-id> <authorization-id>"
+fi
+
+account_id="$1"
+authorization_id="$2"
+
+api_post "/credit-accounts/${account_id}/purchases/authorizations/${authorization_id}/release" "{}"

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/api.sh"
+
+require_tools
+
+if [[ $# -ne 1 ]]; then
+  usage "$(basename "$0") <credit-account-id>"
+fi
+
+account_id="$1"
+
+api_get "/credit-accounts/${account_id}"

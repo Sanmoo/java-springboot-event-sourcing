@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/api.sh"
+
+require_tools
+
+if [[ $# -ne 2 ]]; then
+  usage "$(basename "$0") <credit-account-id> <limit>"
+fi
+
+account_id="$1"
+limit="$2"
+body="$(jq -cn --arg limit "$limit" '{limit: $limit}')"
+
+api_post "/credit-accounts/${account_id}/credit-limit" "$body"
