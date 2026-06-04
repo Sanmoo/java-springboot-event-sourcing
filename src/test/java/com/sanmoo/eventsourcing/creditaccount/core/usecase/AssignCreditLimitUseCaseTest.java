@@ -65,7 +65,7 @@ class AssignCreditLimitUseCaseTest {
 
     @Test
     void conflictThrowsIdempotencyConflictExceptionWithoutSideEffects() {
-        CreditAccountId creditAccountId = CreditAccountId.newId();
+        CreditAccountId creditAccountId = CreditAccountId.of(UUID.randomUUID());
         var input = new AssignCreditLimitInput("conflict-key", creditAccountId, Money.of("200.00"));
 
         when(idempotencyPort.start(eq("conflict-key"), eq("AssignCreditLimit"), eq(creditAccountId.value().toString()), any()))

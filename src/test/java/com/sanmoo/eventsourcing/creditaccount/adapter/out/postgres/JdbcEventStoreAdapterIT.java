@@ -63,7 +63,7 @@ class JdbcEventStoreAdapterIT {
         // given
         var aggregateType = "CreditAccount";
         var aggregateId = UUID.randomUUID().toString();
-        var creditAccountId = CreditAccountId.newId();
+        var creditAccountId = CreditAccountId.of(UUID.randomUUID());
         var occurredAt = Instant.now();
         var openedEvent = new CreditAccountOpened(creditAccountId, occurredAt);
 
@@ -131,7 +131,7 @@ class JdbcEventStoreAdapterIT {
         // given
         var aggregateType = "CreditAccount";
         var aggregateId = UUID.randomUUID().toString();
-        var creditAccountId = CreditAccountId.newId();
+        var creditAccountId = CreditAccountId.of(UUID.randomUUID());
         var occurredAt = Instant.now();
         var openedEvent = new CreditAccountOpened(creditAccountId, occurredAt);
 

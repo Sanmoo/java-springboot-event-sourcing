@@ -7,6 +7,5 @@ public record AuthorizationId(UUID value) {
         java.util.Objects.requireNonNull(value, "value must not be null");
     }
 
-    public static AuthorizationId newId() { return new AuthorizationId(UUID.randomUUID()); }
     public static AuthorizationId of(UUID value) { return new AuthorizationId(value); }
 }

@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +52,7 @@ class CreditAccountTest {
 
     @Test
     void opensCreditAccount() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
 
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of());
         var events = account.open(Instant.parse("2026-06-01T10:00:00Z"));
@@ -61,8 +62,8 @@ class CreditAccountTest {
 
     @Test
     void authorizesPurchaseWhenAvailableLimitIsEnough() {
-        CreditAccountId accountId = CreditAccountId.newId();
-        AuthorizationId authorizationId = AuthorizationId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
@@ -75,20 +76,20 @@ class CreditAccountTest {
 
     @Test
     void rejectsPurchaseWhenAvailableLimitIsInsufficient() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
         ));
 
-        assertThatThrownBy(() -> account.authorizePurchase(AuthorizationId.newId(), Money.of("101.00"), "Book Store", Instant.now()))
+        assertThatThrownBy(() -> account.authorizePurchase(AuthorizationId.of(UUID.randomUUID()), Money.of("101.00"), "Book Store", Instant.now()))
                 .isInstanceOf(InsufficientAvailableLimitException.class);
     }
 
     @Test
     void captureMovesReservedAmountToOutstandingBalance() {
-        CreditAccountId accountId = CreditAccountId.newId();
-        AuthorizationId authorizationId = AuthorizationId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
@@ -102,7 +103,7 @@ class CreditAccountTest {
 
     @Test
     void cannotAssignLimitBeforeOpen() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of());
 
         assertThatThrownBy(() -> account.assignCreditLimit(Money.of("100.00"), Instant.now()))
@@ -111,7 +112,7 @@ class CreditAccountTest {
 
     @Test
     void cannotAssignLimitTwice() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
@@ -123,8 +124,8 @@ class CreditAccountTest {
 
     @Test
     void cannotReduceLimitBelowOutstandingPlusAuthorized() {
-        CreditAccountId accountId = CreditAccountId.newId();
-        AuthorizationId authorizationId = AuthorizationId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
@@ -137,20 +138,20 @@ class CreditAccountTest {
 
     @Test
     void cannotCaptureMissingAuthorization() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
         ));
 
-        assertThatThrownBy(() -> account.capturePurchase(AuthorizationId.newId(), Instant.now()))
+        assertThatThrownBy(() -> account.capturePurchase(AuthorizationId.of(UUID.randomUUID()), Instant.now()))
                 .isInstanceOf(AuthorizationNotFoundException.class);
     }
 
     @Test
     void cannotReleaseCapturedAuthorization() {
-        CreditAccountId accountId = CreditAccountId.newId();
-        AuthorizationId authorizationId = AuthorizationId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
@@ -164,7 +165,7 @@ class CreditAccountTest {
 
     @Test
     void cannotPayMoreThanOutstanding() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
@@ -176,7 +177,7 @@ class CreditAccountTest {
 
     @Test
     void cannotOpenAccountTwice() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z"))
         ));
@@ -187,7 +188,7 @@ class CreditAccountTest {
 
     @Test
     void assignCreditLimitOnOpenedAccount() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z"))
         ));
@@ -199,7 +200,7 @@ class CreditAccountTest {
 
     @Test
     void cannotAssignZeroOrNegativeLimit() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z"))
         ));
@@ -210,7 +211,7 @@ class CreditAccountTest {
 
     @Test
     void changeCreditLimitHappyPath() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
@@ -223,7 +224,7 @@ class CreditAccountTest {
 
     @Test
     void cannotChangeLimitToZeroOrNegative() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
@@ -235,19 +236,19 @@ class CreditAccountTest {
 
     @Test
     void cannotAuthorizePurchaseWithoutLimit() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z"))
         ));
 
-        assertThatThrownBy(() -> account.authorizePurchase(AuthorizationId.newId(), Money.of("10.00"), "Store", Instant.now()))
+        assertThatThrownBy(() -> account.authorizePurchase(AuthorizationId.of(UUID.randomUUID()), Money.of("10.00"), "Store", Instant.now()))
                 .isInstanceOf(CreditLimitNotAssignedException.class);
     }
 
     @Test
     void cannotAuthorizePurchaseWithDuplicateAuthorizationId() {
-        CreditAccountId accountId = CreditAccountId.newId();
-        AuthorizationId authorizationId = AuthorizationId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
@@ -260,20 +261,20 @@ class CreditAccountTest {
 
     @Test
     void cannotAuthorizePurchaseWithZeroAmount() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
         ));
 
-        assertThatThrownBy(() -> account.authorizePurchase(AuthorizationId.newId(), Money.zero(), "Store", Instant.now()))
+        assertThatThrownBy(() -> account.authorizePurchase(AuthorizationId.of(UUID.randomUUID()), Money.zero(), "Store", Instant.now()))
                 .isInstanceOf(InvalidMoneyException.class);
     }
 
     @Test
     void releaseAuthorizationHappyPath() {
-        CreditAccountId accountId = CreditAccountId.newId();
-        AuthorizationId authorizationId = AuthorizationId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
@@ -287,8 +288,8 @@ class CreditAccountTest {
 
     @Test
     void cannotReleaseAlreadyReleasedAuthorization() {
-        CreditAccountId accountId = CreditAccountId.newId();
-        AuthorizationId authorizationId = AuthorizationId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
@@ -302,8 +303,8 @@ class CreditAccountTest {
 
     @Test
     void receivePaymentHappyPath() {
-        CreditAccountId accountId = CreditAccountId.newId();
-        AuthorizationId authorizationId = AuthorizationId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
@@ -318,7 +319,7 @@ class CreditAccountTest {
 
     @Test
     void cannotReceiveZeroPayment() {
-        CreditAccountId accountId = CreditAccountId.newId();
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
         CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z"))
