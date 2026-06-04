@@ -5,9 +5,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AuthorizePurchaseRequest(
+        @NotNull @JsonProperty("authorizationId") UUID authorizationId,
         @NotNull @JsonProperty("amount") BigDecimal amount,
         @NotBlank @JsonProperty("merchantName") String merchantName
 ) {

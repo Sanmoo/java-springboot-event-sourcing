@@ -5,9 +5,9 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
+import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
 import tools.jackson.databind.ObjectMapper;
@@ -29,7 +29,6 @@ class AuthorizePurchaseUseCaseTest {
     private IdempotencyPort idempotencyPort;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
-    private UniqueIdGenerator uniqueIdGenerator;
     private AuthorizePurchaseUseCase useCase;
 
     @BeforeEach
@@ -38,9 +37,7 @@ class AuthorizePurchaseUseCaseTest {
         idempotencyPort = mock(IdempotencyPort.class);
         objectMapper = new ObjectMapper();
         support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
-        uniqueIdGenerator = mock(UniqueIdGenerator.class);
-        when(uniqueIdGenerator.generate()).thenReturn(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000002"));
-        useCase = new AuthorizePurchaseUseCase(support, uniqueIdGenerator);
+        useCase = new AuthorizePurchaseUseCase(support);
     }
 
     @Test
@@ -60,70 +57,56 @@ class AuthorizePurchaseUseCaseTest {
         when(eventStore.appendEvents(any(), any(), anyLong(), anyList(), anyMap()))
                 .thenReturn(new AppendResult(3L));
 
-        var input = new AuthorizePurchaseInput("key-1", creditAccountId, Money.of("100.00"), "Store");
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000123"));
+
+        var input = new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store");
         var output = useCase.execute(input);
 
         assertThat(output.account().authorizedAmount()).isEqualTo("100.00");
-        assertThat(output.authorizationId()).isEqualTo("018f5f4b-6a3c-7000-8000-000000000002");
+        assertThat(output.authorizationId()).isEqualTo(authorizationId.value().toString());
         assertThat(output.account().authorizations())
                 .extracting(PurchaseAuthorizationOutput::authorizationId)
-                .containsExactly("018f5f4b-6a3c-7000-8000-000000000002");
+                .containsExactly(authorizationId.value().toString());
         assertThat(output.replayed()).isFalse();
     }
 
     @Test
-    void executeReplayReturnsExactOriginalAuthorizationIdFromFullReplayedResponse() {
+    void executeReplayReturnsSuppliedAuthorizationId() {
         UUID accountId = UUID.randomUUID();
         CreditAccountId creditAccountId = CreditAccountId.of(accountId);
-        String originalAuthorizationId = "018f5f4b-6a3c-7000-8000-000000000099";
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000099"));
         String responsePayload = """
                 {
                   "aggregateId": "%s",
                   "aggregateVersion": 3,
                   "responseData": {
-                    "account": {
-                      "creditAccountId": "%s",
-                      "opened": true,
-                      "creditLimit": "500.00",
-                      "outstandingBalance": "0.00",
-                      "authorizedAmount": "150.00",
-                      "availableLimit": "350.00",
-                      "authorizations": [
-                        {
-                          "authorizationId": "018f5f4b-6a3c-7000-8000-000000000077",
-                          "amount": "50.00",
-                          "status": "OPEN",
-                          "merchantName": "Other Store"
-                        },
-                        {
-                          "authorizationId": "%s",
-                          "amount": "100.00",
-                          "status": "OPEN",
-                          "merchantName": "Store"
-                        },
-                        {
-                          "authorizationId": "018f5f4b-6a3c-7000-8000-000000000088",
-                          "amount": "25.00",
-                          "status": "OPEN",
-                          "merchantName": "Last Store"
-                        }
-                      ]
-                    },
-                    "authorizationId": "%s",
-                    "replayed": false
+                    "creditAccountId": "%s",
+                    "opened": true,
+                    "creditLimit": "500.00",
+                    "outstandingBalance": "0.00",
+                    "authorizedAmount": "100.00",
+                    "availableLimit": "400.00",
+                    "authorizations": [
+                      {
+                        "authorizationId": "%s",
+                        "amount": "100.00",
+                        "status": "OPEN",
+                        "merchantName": "Store"
+                      }
+                    ]
                   }
                 }
-                """.formatted(accountId, accountId, originalAuthorizationId, originalAuthorizationId);
+                """.formatted(accountId, accountId, authorizationId.value());
 
         when(idempotencyPort.start(any(), eq("AuthorizePurchase"), any(), any()))
                 .thenReturn(new IdempotencyDecision.Replay(responsePayload));
 
-        var input = new AuthorizePurchaseInput("key-1", creditAccountId, Money.of("100.00"), "Store");
+        var input = new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store");
         var output = useCase.execute(input);
 
-        assertThat(output.authorizationId()).isEqualTo(originalAuthorizationId);
+        assertThat(output.authorizationId()).isEqualTo(authorizationId.value().toString());
         assertThat(output.replayed()).isTrue();
-        verify(uniqueIdGenerator, never()).generate();
         verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
     }
+
 }

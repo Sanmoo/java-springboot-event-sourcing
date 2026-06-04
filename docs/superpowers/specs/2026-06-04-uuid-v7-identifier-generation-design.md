@@ -5,12 +5,11 @@
 Production code currently generates UUIDs with `UUID.randomUUID()` in three places:
 
 - `CreditAccountId.newId()`
-- `AuthorizationId.newId()`
 - `JdbcEventStoreAdapter.appendEvents()` for `event_id`
 
 UUID v4 values are random. They work as identifiers, but they are not time-ordered and can produce less index-friendly write patterns in relational databases than ordered identifiers. The goal is to use UUID v7 for production-generated identifiers while keeping the change small and aligned with the existing ports-and-adapters architecture.
 
-Test fixtures may continue to use `UUID.randomUUID()` when they only need distinct values. This design targets production code only.
+Test fixtures may continue to use `UUID.randomUUID()` when they only need distinct values. This design targets production code only. UUIDs supplied by API clients are out of scope: the system must accept and persist them as provided rather than replacing them with UUID v7 values.
 
 ## Goals
 
@@ -49,7 +48,7 @@ Production code that needs a newly generated identifier should receive `UniqueId
 
 ### Core Port
 
-Add `UniqueIdGenerator` in `core.port`. The port returns `UUID` rather than a domain-specific type because it is used by multiple identifier types: aggregate IDs, authorization IDs, and event IDs.
+Add `UniqueIdGenerator` in `core.port`. The port returns `UUID` rather than a domain-specific type because it is used by multiple production-generated identifier types, such as aggregate IDs and event IDs.
 
 ### UUID v7 Adapter
 
@@ -63,7 +62,7 @@ Keep value objects responsible for validation/wrapping only:
 
 - `CreditAccountId.of(UUID)` remains.
 - `AuthorizationId.of(UUID)` remains.
-- Production use cases should not call static random generation methods.
+- Production use cases should not call static random generation methods for system-generated identifiers.
 
 If `newId()` becomes unused in production, remove it or refactor it away so production code cannot accidentally generate UUID v4 through the domain model.
 
@@ -72,9 +71,8 @@ If `newId()` becomes unused in production, remove it or refactor it away so prod
 Inject `UniqueIdGenerator` into use cases that create identifiers:
 
 - `OpenCreditAccountUseCase` generates `CreditAccountId` with `CreditAccountId.of(uniqueIdGenerator.generate())`.
-- `AuthorizePurchaseUseCase` generates `AuthorizationId` with `AuthorizationId.of(uniqueIdGenerator.generate())`.
 
-Other use cases that only receive IDs from inputs should not depend on the generator.
+`AuthorizePurchaseUseCase` does not create an identifier in the current API contract. `AuthorizationId` is supplied by the API client in the authorize purchase request, remains part of `AuthorizePurchaseInput`, and is passed through to the domain unchanged. Other use cases that only receive IDs from inputs should not depend on the generator.
 
 ### Event Store Adapter
 
@@ -87,7 +85,7 @@ This keeps event IDs ordered by generation time while preserving the existing `u
 1. A command enters a REST controller.
 2. The controller calls the appropriate use case.
 3. If the use case creates a new domain identifier, it calls `UniqueIdGenerator.generate()`.
-4. The use case wraps the UUID in `CreditAccountId` or `AuthorizationId`.
+4. The use case wraps generated UUIDs in the appropriate value object, such as `CreditAccountId`. API-supplied UUIDs, such as authorize purchase `AuthorizationId`, are parsed at the boundary and passed through unchanged.
 5. When events are appended, `JdbcEventStoreAdapter` calls the same port to generate each `event_id`.
 6. The UUID values are persisted and returned using the same formats as today.
 
@@ -102,18 +100,18 @@ Constructor injection should make missing Spring wiring fail at application star
 Follow TDD before production edits:
 
 1. Add a test for the UUID v7 adapter proving generated UUIDs have version `7`.
-2. Add or update use case tests with a deterministic `UniqueIdGenerator` fake to prove:
-   - `OpenCreditAccountUseCase` uses the generated account ID.
-   - `AuthorizePurchaseUseCase` uses the generated authorization ID.
-3. Add or update event store adapter testing to prove `JdbcEventStoreAdapter` inserts the `event_id` provided by the generator.
-4. Run focused tests first, then the broader Gradle verification appropriate for the touched code.
+2. Add or update use case tests with a deterministic `UniqueIdGenerator` fake to prove `OpenCreditAccountUseCase` uses the generated account ID.
+3. Restore/keep authorize purchase tests proving caller-provided `AuthorizationId` is accepted and returned unchanged.
+4. Add or update event store adapter testing to prove `JdbcEventStoreAdapter` inserts the `event_id` provided by the generator.
+5. Run focused tests first, then the broader Gradle verification appropriate for the touched code.
 
 Existing tests may keep using `UUID.randomUUID()` as fixture data unless they exercise production ID generation behavior.
 
 ## Acceptance Criteria
 
 - No production code calls `UUID.randomUUID()`.
-- Production-generated account IDs, authorization IDs, and event IDs come from `UniqueIdGenerator`.
+- Production-generated account IDs and event IDs come from `UniqueIdGenerator`.
+- API-supplied authorization IDs are accepted and preserved; they are not generated or converted to UUID v7 by the system.
 - The production generator creates UUID v7 values.
 - Domain model classes do not depend on a UUID v7 library.
 - Tests cover the new generator and the use of the port in production generation paths.

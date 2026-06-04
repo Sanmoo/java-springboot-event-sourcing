@@ -52,16 +52,18 @@ class CreditAccountControllerIT {
         assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // 3. POST /credit-accounts/{id}/purchases/authorizations
+        String authorizationId = UUID.randomUUID().toString();
         var authResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/purchases/authorizations",
                 new HttpEntity<>(Map.of(
+                        "authorizationId", authorizationId,
                         "amount", "100.00",
                         "merchantName", "Store"
                 ), createHeaders()),
                 Map.class
         );
         assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        String authorizationId = (String) authResponse.getBody().get("authorizationId");
+        assertThat(authResponse.getBody()).containsEntry("authorizationId", authorizationId);
 
         // 4. GET /credit-accounts/{id} (verify available limit decreased)
         var getAfterAuth = restTemplate.getForEntity(
@@ -117,17 +119,18 @@ class CreditAccountControllerIT {
         );
         assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
+        String authorizationId = UUID.randomUUID().toString();
         var authResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/purchases/authorizations",
                 new HttpEntity<>(Map.of(
+                        "authorizationId", authorizationId,
                         "amount", "100.00",
                         "merchantName", "Store"
                 ), createHeaders()),
                 Map.class
         );
         assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        String authorizationId = (String) authResponse.getBody().get("authorizationId");
-        assertThat(authorizationId).isNotBlank();
+        assertThat(authResponse.getBody()).containsEntry("authorizationId", authorizationId);
 
         var releaseResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/release",

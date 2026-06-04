@@ -65,34 +65,6 @@ public class CreditAccountUseCaseSupport {
         };
     }
 
-    public <I, O> O executeIdempotentResponse(
-            String idempotencyKey,
-            String commandType,
-            CreditAccountId creditAccountId,
-            I input,
-            CommandExecutor executor,
-            Function<ExecutionResult, O> outputMapper,
-            Class<O> responseType
-    ) {
-        String aggregateId = creditAccountId.value().toString();
-        String requestHash = calculateRequestHash(input);
-
-        IdempotencyDecision decision = idempotencyPort.start(idempotencyKey, commandType, aggregateId, requestHash);
-
-        return switch (decision) {
-            case IdempotencyDecision.Replay replay -> deserializeReplayResponse(replay, responseType);
-            case IdempotencyDecision.Conflict conflict ->
-                    throw new IdempotencyConflictException(conflict.message());
-            case IdempotencyDecision.Started _ -> {
-                ExecutionResult result = execute(aggregateId, creditAccountId, executor);
-                O response = outputMapper.apply(result);
-                String payload = serializeResponseResult(result, response);
-                idempotencyPort.complete(idempotencyKey, payload);
-                yield response;
-            }
-        };
-    }
-
     public CreditAccountOutput loadAccountOutput(CreditAccountId creditAccountId) {
         String aggregateId = creditAccountId.value().toString();
         List<CreditAccountEvent> history = loadHistory(aggregateId);
@@ -177,22 +149,6 @@ public class CreditAccountUseCaseSupport {
             return objectMapper.writeValueAsString(payload);
         } catch (JacksonException e) {
             throw new RuntimeException("Failed to serialize response for idempotency", e);
-        }
-    }
-
-    private <O> O deserializeReplayResponse(IdempotencyDecision.Replay replay, Class<O> responseType) {
-        try {
-            Map<String, Object> raw = objectMapper.readValue(replay.responsePayload(), objectMapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, Object.class));
-            Object responseData = raw.get("responseData");
-            if (responseData instanceof Map<?, ?> responseMap && responseMap.containsKey("replayed")) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> mutableResponse = new LinkedHashMap<>((Map<String, Object>) responseMap);
-                mutableResponse.put("replayed", true);
-                responseData = mutableResponse;
-            }
-            return objectMapper.convertValue(responseData, responseType);
-        } catch (JacksonException | ClassCastException e) {
-            throw new RuntimeException("Failed to deserialize idempotency response payload", e);
         }
     }
 

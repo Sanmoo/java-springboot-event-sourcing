@@ -4,7 +4,7 @@
 
 **Goal:** Replace production UUID v4 generation with UUID v7 behind a minimal `UniqueIdGenerator` port.
 
-**Architecture:** Add a core port that returns `java.util.UUID`, implement it in an outbound Spring adapter using `com.github.f4b6a3:uuid-creator`, and inject the port into production components that create identifiers. Domain value objects remain wrappers around UUIDs and no production code calls `UUID.randomUUID()`.
+**Architecture:** Add a core port that returns `java.util.UUID`, implement it in an outbound Spring adapter using `com.github.f4b6a3:uuid-creator`, and inject the port into production components that create identifiers. Domain value objects remain wrappers around UUIDs and no production code calls `UUID.randomUUID()` for system-generated IDs. UUIDs supplied by API clients are out of scope and remain caller-provided.
 
 **Tech Stack:** Java 25, Spring Boot 4, Gradle Kotlin DSL, JUnit 5, Mockito, AssertJ, ArchUnit, uuid-creator 6.1.1.
 
@@ -18,11 +18,11 @@
 - Modify `build.gradle.kts`: add `implementation("com.github.f4b6a3:uuid-creator:6.1.1")`.
 - Modify `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/OpenCreditAccountUseCase.java`: inject generator and create account IDs with it.
 - Modify `src/test/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/OpenCreditAccountUseCaseTest.java`: use deterministic generator fake and assert generated ID is used.
-- Modify `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseInput.java`: remove caller-provided `AuthorizationId` because production now generates it.
-- Modify `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCase.java`: inject generator and create authorization IDs with it.
-- Modify `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/dto/AuthorizePurchaseRequest.java`: remove `authorizationId` from request body.
-- Modify `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountController.java`: construct `AuthorizePurchaseInput` without authorization ID.
-- Modify tests that construct `AuthorizePurchaseInput` or send authorization request JSON so they expect server-generated authorization IDs.
+- Keep `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseInput.java`: caller-provided `AuthorizationId` remains in scope for the API contract.
+- Keep `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCase.java`: use the supplied authorization ID and do not inject `UniqueIdGenerator`.
+- Keep `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/dto/AuthorizePurchaseRequest.java`: require `authorizationId` in the request body.
+- Keep `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountController.java`: parse `authorizationId` and pass it to `AuthorizePurchaseInput`.
+- Keep tests that construct `AuthorizePurchaseInput` or send authorization request JSON expecting caller-provided authorization IDs to be returned unchanged.
 - Modify `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/out/postgres/JdbcEventStoreAdapter.java`: inject generator for event IDs.
 - Modify `src/test/java/com/sanmoo/eventsourcing/creditaccount/adapter/out/postgres/JdbcEventStoreAdapterIT.java`: inject deterministic generator and assert inserted event IDs use it.
 - Modify `src/main/java/com/sanmoo/eventsourcing/creditaccount/domain/model/CreditAccountId.java` and `src/main/java/com/sanmoo/eventsourcing/creditaccount/domain/model/AuthorizationId.java`: remove `newId()` and `UUID.randomUUID()` from production classes after test fixtures are updated to use `of(UUID.randomUUID())`.
@@ -262,179 +262,20 @@ git commit -m "feat: generate credit account ids through port"
 
 ---
 
-### Task 3: Generate purchase authorization IDs in production
+### Task 3: Scope correction — keep authorization IDs caller-provided
 
 **Files:**
-- Modify: `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseInput.java`
-- Modify: `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCase.java`
-- Modify: `src/test/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCaseTest.java`
-- Modify: `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/dto/AuthorizePurchaseRequest.java`
-- Modify: `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountController.java`
-- Modify: `src/test/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountControllerIT.java`
+- Keep/restore: `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseInput.java`
+- Keep/restore: `src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCase.java`
+- Keep/restore: `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/dto/AuthorizePurchaseRequest.java`
+- Keep/restore: `src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountController.java`
+- Keep/restore tests for caller-provided authorization IDs.
 
-- [ ] **Step 1: Write failing core test changes**
+- [ ] **Step 1: No-op/scope correction**
 
-In `AuthorizePurchaseUseCaseTest`, add this import:
+Do not generate `AuthorizationId` in `AuthorizePurchaseUseCase`. The authorize purchase REST API continues to require `authorizationId` in the request body. The controller parses that UUID, constructs `AuthorizePurchaseInput` with it, and the use case passes it to `account.authorizePurchase(...)` and includes the same value in `AuthorizePurchaseOutput`.
 
-```java
-import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
-```
-
-Add this field:
-
-```java
-private UniqueIdGenerator uniqueIdGenerator;
-```
-
-Update `setUp()`:
-
-```java
-uniqueIdGenerator = () -> UUID.fromString("018f5f4b-6a3c-7000-8000-000000000002");
-useCase = new AuthorizePurchaseUseCase(support, uniqueIdGenerator);
-```
-
-In `executeAuthorizesPurchase()`, remove these lines:
-
-```java
-UUID authId = UUID.randomUUID();
-AuthorizationId authorizationId = AuthorizationId.of(authId);
-```
-
-Create input without authorization ID:
-
-```java
-var input = new AuthorizePurchaseInput("key-1", creditAccountId, Money.of("100.00"), "Store");
-```
-
-Assert the generated ID:
-
-```java
-assertThat(output.authorizationId()).isEqualTo("018f5f4b-6a3c-7000-8000-000000000002");
-```
-
-- [ ] **Step 2: Run the core test to verify it fails**
-
-Run:
-
-```bash
-./gradlew test --tests 'com.sanmoo.eventsourcing.creditaccount.core.usecase.AuthorizePurchaseUseCaseTest'
-```
-
-Expected: FAIL because `AuthorizePurchaseInput` and `AuthorizePurchaseUseCase` still require caller-provided authorization IDs.
-
-- [ ] **Step 3: Update the input record**
-
-Replace `AuthorizePurchaseInput.java` with:
-
-```java
-package com.sanmoo.eventsourcing.creditaccount.core.usecase;
-
-import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
-import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
-
-public record AuthorizePurchaseInput(
-        String idempotencyKey,
-        CreditAccountId creditAccountId,
-        Money amount,
-        String merchantName
-) {}
-```
-
-- [ ] **Step 4: Update the use case implementation**
-
-Replace `AuthorizePurchaseUseCase.java` with:
-
-```java
-package com.sanmoo.eventsourcing.creditaccount.core.usecase;
-
-import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
-import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
-import java.time.Instant;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
-@Service
-@RequiredArgsConstructor
-public class AuthorizePurchaseUseCase {
-
-    private final CreditAccountUseCaseSupport support;
-    private final UniqueIdGenerator uniqueIdGenerator;
-
-    public AuthorizePurchaseOutput execute(AuthorizePurchaseInput input) {
-        AuthorizationId authorizationId = AuthorizationId.of(uniqueIdGenerator.generate());
-        return support.executeIdempotent(
-                input.idempotencyKey(),
-                "AuthorizePurchase",
-                input.creditAccountId(),
-                input,
-                account -> account.authorizePurchase(
-                        authorizationId, input.amount(), input.merchantName(), now()),
-                result -> new AuthorizePurchaseOutput(
-                        result.output(),
-                        authorizationId.value().toString(),
-                        result.replayed()
-                )
-        );
-    }
-
-    private Instant now() {
-        return Instant.now();
-    }
-}
-```
-
-- [ ] **Step 5: Update REST request DTO and controller**
-
-Replace `AuthorizePurchaseRequest.java` with:
-
-```java
-package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import java.math.BigDecimal;
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-public record AuthorizePurchaseRequest(
-        @NotNull @JsonProperty("amount") BigDecimal amount,
-        @NotBlank @JsonProperty("merchantName") String merchantName
-) {
-}
-```
-
-In `CreditAccountController.authorizePurchase`, remove:
-
-```java
-var authorizationId = AuthorizationId.of(UUID.fromString(request.authorizationId()));
-```
-
-Replace the input creation with:
-
-```java
-var input = new AuthorizePurchaseInput(
-        idempotencyKey, creditAccountId,
-        Money.positive(request.amount()), request.merchantName());
-```
-
-- [ ] **Step 6: Update REST integration request JSON**
-
-In `CreditAccountControllerIT`, remove `authorizationId` from request bodies sent to `POST /credit-accounts/{id}/purchases/authorizations`. Capture the returned `authorizationId` from the response and use it for capture/release endpoints.
-
-The authorization request body should be:
-
-```java
-Map.of("amount", "100.00", "merchantName", "Store")
-```
-
-The response extraction should use the existing response map:
-
-```java
-String authorizationId = authorizationResponse.getBody().get("authorizationId").toString();
-```
-
-- [ ] **Step 7: Run focused tests to verify they pass**
+- [ ] **Step 2: Verify focused authorize tests**
 
 Run:
 
@@ -442,16 +283,16 @@ Run:
 ./gradlew test --tests 'com.sanmoo.eventsourcing.creditaccount.core.usecase.AuthorizePurchaseUseCaseTest' --tests 'com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.CreditAccountControllerIT'
 ```
 
-Expected: PASS.
+Expected: PASS with tests proving the caller-provided authorization ID is returned and used for capture/release flows.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 3: Commit only if a previous implementation generated authorization IDs**
+
+If code had already been changed to generate authorization IDs server-side, restore the API contract and commit:
 
 ```bash
-git add src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseInput.java src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCase.java src/test/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCaseTest.java src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/dto/AuthorizePurchaseRequest.java src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountController.java src/test/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountControllerIT.java
-git commit -m "feat: generate authorization ids through port"
+git add src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseInput.java src/main/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCase.java src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/dto/AuthorizePurchaseRequest.java src/main/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountController.java src/test/java/com/sanmoo/eventsourcing/creditaccount/core/usecase/AuthorizePurchaseUseCaseTest.java src/test/java/com/sanmoo/eventsourcing/creditaccount/adapter/in/rest/CreditAccountControllerIT.java
+git commit -m "fix: keep client-provided authorization ids"
 ```
-
----
 
 ### Task 4: Use the generator for event store event IDs
 
