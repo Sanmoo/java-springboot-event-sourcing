@@ -24,6 +24,7 @@ public class ArchitectureFitnessFunctions {
                     "java..",
                     "com.sanmoo.eventsourcing.creditaccount.domain..",
                     "com.sanmoo.eventsourcing.creditaccount.core..",
+                    "org.springframework..",
                     "tools.jackson..",  // required for idempotency serialization; consider extracting serialization port
                     "org.springframework.stereotype.."  // use cases are Spring-discovered application services
             )

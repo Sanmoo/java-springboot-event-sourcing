@@ -37,7 +37,7 @@ public class JdbcEventStoreAdapter implements EventStorePort {
 
     private final JdbcTemplate jdbcTemplate;
     private final EventTypeMapper eventTypeMapper;
-    private final RowMapper<EventEnvelope> rowMapper = new EventEnvelopeRowMapper();
+    private final RowMapper<EventEnvelope> rowMapper = this::mapEventEnvelope;
 
     @Override
     @Transactional(readOnly = true)
@@ -81,31 +81,27 @@ public class JdbcEventStoreAdapter implements EventStorePort {
         return eventTypeMapper.serializeMetadata(metadata);
     }
 
-    private class EventEnvelopeRowMapper implements RowMapper<EventEnvelope> {
+    private EventEnvelope mapEventEnvelope(ResultSet rs, int rowNum) throws SQLException {
+        UUID eventId = rs.getObject("event_id", UUID.class);
+        String aggregateType = rs.getString("aggregate_type");
+        String aggregateId = rs.getString("aggregate_id");
+        long aggregateVersion = rs.getLong("aggregate_version");
+        String eventType = rs.getString("event_type");
+        String payload = rs.getString("payload");
+        String metadataJson = rs.getString("metadata");
+        Timestamp occurredAtTs = rs.getTimestamp("occurred_at");
+        Instant occurredAt = occurredAtTs.toInstant();
 
-        @Override
-        public EventEnvelope mapRow(ResultSet rs, int rowNum) throws SQLException {
-            UUID eventId = rs.getObject("event_id", UUID.class);
-            String aggregateType = rs.getString("aggregate_type");
-            String aggregateId = rs.getString("aggregate_id");
-            long aggregateVersion = rs.getLong("aggregate_version");
-            String eventType = rs.getString("event_type");
-            String payload = rs.getString("payload");
-            String metadataJson = rs.getString("metadata");
-            Timestamp occurredAtTs = rs.getTimestamp("occurred_at");
-            Instant occurredAt = occurredAtTs.toInstant();
+        CreditAccountEvent event = eventTypeMapper.deserialize(eventType, payload);
+        Map<String, String> metadata = deserializeMetadata(metadataJson);
 
-            CreditAccountEvent event = eventTypeMapper.deserialize(eventType, payload);
-            Map<String, String> metadata = deserializeMetadata(metadataJson);
+        return new EventEnvelope(eventId, aggregateType, aggregateId, aggregateVersion, event, occurredAt, metadata);
+    }
 
-            return new EventEnvelope(eventId, aggregateType, aggregateId, aggregateVersion, event, occurredAt, metadata);
+    private Map<String, String> deserializeMetadata(String metadataJson) {
+        if (metadataJson == null || metadataJson.isBlank()) {
+            return Map.of();
         }
-
-        private Map<String, String> deserializeMetadata(String metadataJson) {
-            if (metadataJson == null || metadataJson.isBlank()) {
-                return Map.of();
-            }
-            return eventTypeMapper.deserializeMetadata(metadataJson);
-        }
+        return eventTypeMapper.deserializeMetadata(metadataJson);
     }
 }
