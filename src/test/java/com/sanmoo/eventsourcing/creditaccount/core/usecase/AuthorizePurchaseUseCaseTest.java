@@ -71,32 +71,28 @@ class AuthorizePurchaseUseCaseTest {
     }
 
     @Test
-    void executeReplayReturnsSuppliedAuthorizationId() {
+    void executeReplayReturnsSuppliedAuthorizationId() throws Exception {
         UUID accountId = UUID.randomUUID();
         CreditAccountId creditAccountId = CreditAccountId.of(accountId);
         AuthorizationId authorizationId = AuthorizationId.of(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000099"));
-        String responsePayload = """
-                {
-                  "aggregateId": "%s",
-                  "aggregateVersion": 3,
-                  "responseData": {
-                    "creditAccountId": "%s",
-                    "opened": true,
-                    "creditLimit": "500.00",
-                    "outstandingBalance": "0.00",
-                    "authorizedAmount": "100.00",
-                    "availableLimit": "400.00",
-                    "authorizations": [
-                      {
-                        "authorizationId": "%s",
-                        "amount": "100.00",
-                        "status": "OPEN",
-                        "merchantName": "Store"
-                      }
-                    ]
-                  }
-                }
-                """.formatted(accountId, accountId, authorizationId.value());
+        String responsePayload = objectMapper.writeValueAsString(Map.of(
+                "aggregateId", accountId.toString(),
+                "aggregateVersion", 3,
+                "responseData", Map.of(
+                        "creditAccountId", accountId.toString(),
+                        "opened", true,
+                        "creditLimit", "500.00",
+                        "outstandingBalance", "0.00",
+                        "authorizedAmount", "100.00",
+                        "availableLimit", "400.00",
+                        "authorizations", List.of(Map.of(
+                                "authorizationId", authorizationId.value().toString(),
+                                "amount", "100.00",
+                                "status", "OPEN",
+                                "merchantName", "Store"
+                        ))
+                )
+        ));
 
         when(idempotencyPort.start(any(), eq("AuthorizePurchase"), any(), any()))
                 .thenReturn(new IdempotencyDecision.Replay(responsePayload));
