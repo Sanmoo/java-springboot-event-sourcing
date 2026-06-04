@@ -48,10 +48,38 @@ All `POST` endpoints require `Idempotency-Key` header.
 
 ## Running
 
+### Local development
+
+Start PostgreSQL 18:
+
 ```bash
-# Tests require:
-# - JDK 25 installed locally
-# - Docker for Testcontainers
+docker compose up -d
+```
+
+Then run the Spring Boot application locally. The default datasource configuration points to the Compose database at `localhost:5432/credit_account` using username and password `credit_account`.
+
+Stop PostgreSQL:
+
+```bash
+docker compose down
+```
+
+Remove the persisted database volume when you want a clean database:
+
+```bash
+docker compose down -v
+```
+
+If port `5432` is already in use on your machine, change the host side of the port mapping in `docker-compose.yml` and update the local datasource URL accordingly.
+
+### Tests
+
+Tests require:
+
+- JDK 25 installed locally
+- Docker for Testcontainers
+
+```bash
 ./gradlew test
 ```
 
