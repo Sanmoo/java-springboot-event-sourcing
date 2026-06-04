@@ -3,6 +3,7 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.*;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.*;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/credit-accounts")
+@RequiredArgsConstructor
 public class CreditAccountController {
 
     private final OpenCreditAccountUseCase openCreditAccountUseCase;
@@ -23,24 +25,6 @@ public class CreditAccountController {
     private final ReleasePurchaseAuthorizationUseCase releasePurchaseAuthorizationUseCase;
     private final ReceivePaymentUseCase receivePaymentUseCase;
     private final GetCreditAccountUseCase getCreditAccountUseCase;
-
-    public CreditAccountController(
-            OpenCreditAccountUseCase openCreditAccountUseCase,
-            AssignCreditLimitUseCase assignCreditLimitUseCase,
-            AuthorizePurchaseUseCase authorizePurchaseUseCase,
-            CapturePurchaseUseCase capturePurchaseUseCase,
-            ReleasePurchaseAuthorizationUseCase releasePurchaseAuthorizationUseCase,
-            ReceivePaymentUseCase receivePaymentUseCase,
-            GetCreditAccountUseCase getCreditAccountUseCase
-    ) {
-        this.openCreditAccountUseCase = openCreditAccountUseCase;
-        this.assignCreditLimitUseCase = assignCreditLimitUseCase;
-        this.authorizePurchaseUseCase = authorizePurchaseUseCase;
-        this.capturePurchaseUseCase = capturePurchaseUseCase;
-        this.releasePurchaseAuthorizationUseCase = releasePurchaseAuthorizationUseCase;
-        this.receivePaymentUseCase = receivePaymentUseCase;
-        this.getCreditAccountUseCase = getCreditAccountUseCase;
-    }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> openCreditAccount(

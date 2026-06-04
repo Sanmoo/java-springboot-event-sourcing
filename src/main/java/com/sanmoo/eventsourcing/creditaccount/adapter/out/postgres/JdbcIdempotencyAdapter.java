@@ -2,12 +2,14 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class JdbcIdempotencyAdapter implements IdempotencyPort {
 
     private static final String INSERT_STARTED_SQL = """
@@ -28,19 +30,14 @@ public class JdbcIdempotencyAdapter implements IdempotencyPort {
             """;
 
     private final JdbcTemplate jdbcTemplate;
-    private final RowMapper<IdempotencyRecord> rowMapper;
-
-    public JdbcIdempotencyAdapter(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.rowMapper = (rs, rowNum) -> new IdempotencyRecord(
-                rs.getString("idempotency_key"),
-                rs.getString("command_type"),
-                rs.getString("aggregate_id"),
-                rs.getString("request_hash"),
-                rs.getString("status"),
-                rs.getString("response_payload")
-        );
-    }
+    private final RowMapper<IdempotencyRecord> rowMapper = (rs, rowNum) -> new IdempotencyRecord(
+            rs.getString("idempotency_key"),
+            rs.getString("command_type"),
+            rs.getString("aggregate_id"),
+            rs.getString("request_hash"),
+            rs.getString("status"),
+            rs.getString("response_payload")
+    );
 
     @Override
     public IdempotencyDecision start(String key, String commandType, String aggregateId, String requestHash) {

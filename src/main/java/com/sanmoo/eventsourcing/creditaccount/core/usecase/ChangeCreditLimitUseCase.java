@@ -1,17 +1,15 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 
 @Service
+@RequiredArgsConstructor
 public class ChangeCreditLimitUseCase {
 
     private final CreditAccountUseCaseSupport support;
-
-    public ChangeCreditLimitUseCase(CreditAccountUseCaseSupport support) {
-        this.support = support;
-    }
 
     public ChangeCreditLimitOutput execute(ChangeCreditLimitInput input) {
         return support.executeIdempotent(

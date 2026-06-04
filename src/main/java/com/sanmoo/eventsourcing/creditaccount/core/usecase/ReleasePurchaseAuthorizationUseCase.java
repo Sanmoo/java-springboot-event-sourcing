@@ -1,17 +1,15 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 
 @Service
+@RequiredArgsConstructor
 public class ReleasePurchaseAuthorizationUseCase {
 
     private final CreditAccountUseCaseSupport support;
-
-    public ReleasePurchaseAuthorizationUseCase(CreditAccountUseCaseSupport support) {
-        this.support = support;
-    }
 
     public ReleasePurchaseAuthorizationOutput execute(ReleasePurchaseAuthorizationInput input) {
         return support.executeIdempotent(

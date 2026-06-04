@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 public class JdbcEventStoreAdapter implements EventStorePort {
 
     private static final String LOAD_EVENTS_SQL = """
@@ -35,13 +37,7 @@ public class JdbcEventStoreAdapter implements EventStorePort {
 
     private final JdbcTemplate jdbcTemplate;
     private final EventTypeMapper eventTypeMapper;
-    private final RowMapper<EventEnvelope> rowMapper;
-
-    public JdbcEventStoreAdapter(JdbcTemplate jdbcTemplate, EventTypeMapper eventTypeMapper) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.eventTypeMapper = eventTypeMapper;
-        this.rowMapper = new EventEnvelopeRowMapper(eventTypeMapper);
-    }
+    private final RowMapper<EventEnvelope> rowMapper = new EventEnvelopeRowMapper();
 
     @Override
     @Transactional(readOnly = true)
@@ -85,13 +81,7 @@ public class JdbcEventStoreAdapter implements EventStorePort {
         return eventTypeMapper.serializeMetadata(metadata);
     }
 
-    private static class EventEnvelopeRowMapper implements RowMapper<EventEnvelope> {
-
-        private final EventTypeMapper eventTypeMapper;
-
-        EventEnvelopeRowMapper(EventTypeMapper eventTypeMapper) {
-            this.eventTypeMapper = eventTypeMapper;
-        }
+    private class EventEnvelopeRowMapper implements RowMapper<EventEnvelope> {
 
         @Override
         public EventEnvelope mapRow(ResultSet rs, int rowNum) throws SQLException {

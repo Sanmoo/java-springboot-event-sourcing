@@ -9,12 +9,14 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCaptured;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorizationReleased;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
+@RequiredArgsConstructor
 public class EventTypeMapper {
 
     private static final Map<String, Class<? extends CreditAccountEvent>> TYPE_TO_CLASS = Map.of(
@@ -36,10 +38,6 @@ public class EventTypeMapper {
     }
 
     private final ObjectMapper objectMapper;
-
-    public EventTypeMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
 
     public String eventType(CreditAccountEvent event) {
         String type = CLASS_TO_TYPE.get(event.getClass());

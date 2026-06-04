@@ -1,5 +1,6 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
@@ -26,6 +27,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class CreditAccountUseCaseSupport {
 
     private static final String AGGREGATE_TYPE = "CreditAccount";
@@ -33,12 +35,6 @@ public class CreditAccountUseCaseSupport {
     private final EventStorePort eventStore;
     private final IdempotencyPort idempotencyPort;
     private final ObjectMapper objectMapper;
-
-    public CreditAccountUseCaseSupport(EventStorePort eventStore, IdempotencyPort idempotencyPort, ObjectMapper objectMapper) {
-        this.eventStore = eventStore;
-        this.idempotencyPort = idempotencyPort;
-        this.objectMapper = objectMapper;
-    }
 
     public <I, O> O executeIdempotent(
             String idempotencyKey,
