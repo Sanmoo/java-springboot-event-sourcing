@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @RequiredArgsConstructor
@@ -15,37 +16,25 @@ public class AuthorizePurchaseUseCase {
     private final UniqueIdGenerator uniqueIdGenerator;
 
     public AuthorizePurchaseOutput execute(AuthorizePurchaseInput input) {
-        var authorizationId = AuthorizationId.of(uniqueIdGenerator.generate());
+        var authorizationId = new AtomicReference<AuthorizationId>();
 
-        return support.executeIdempotent(
+        return support.executeIdempotentResponse(
                 input.idempotencyKey(),
                 "AuthorizePurchase",
                 input.creditAccountId(),
                 input,
-                account -> account.authorizePurchase(
-                        authorizationId, input.amount(), input.merchantName(), now()),
+                account -> {
+                    AuthorizationId generated = AuthorizationId.of(uniqueIdGenerator.generate());
+                    authorizationId.set(generated);
+                    return account.authorizePurchase(generated, input.amount(), input.merchantName(), now());
+                },
                 result -> new AuthorizePurchaseOutput(
                         result.output(),
-                        authorizationIdFor(result, authorizationId),
+                        authorizationId.get().value().toString(),
                         result.replayed()
-                )
+                ),
+                AuthorizePurchaseOutput.class
         );
-    }
-
-    private String authorizationIdFor(
-            CreditAccountUseCaseSupport.ExecutionResult result,
-            AuthorizationId generatedAuthorizationId
-    ) {
-        if (!result.replayed()) {
-            return generatedAuthorizationId.value().toString();
-        }
-
-        var authorizations = result.output().authorizations();
-        if (authorizations == null || authorizations.isEmpty()) {
-            return generatedAuthorizationId.value().toString();
-        }
-
-        return authorizations.getLast().authorizationId();
     }
 
     private Instant now() {

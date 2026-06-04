@@ -38,7 +38,8 @@ class AuthorizePurchaseUseCaseTest {
         idempotencyPort = mock(IdempotencyPort.class);
         objectMapper = new ObjectMapper();
         support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
-        uniqueIdGenerator = () -> UUID.fromString("018f5f4b-6a3c-7000-8000-000000000002");
+        uniqueIdGenerator = mock(UniqueIdGenerator.class);
+        when(uniqueIdGenerator.generate()).thenReturn(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000002"));
         useCase = new AuthorizePurchaseUseCase(support, uniqueIdGenerator);
     }
 
@@ -71,7 +72,7 @@ class AuthorizePurchaseUseCaseTest {
     }
 
     @Test
-    void executeReplayReturnsOriginalAuthorizationIdFromReplayedAccountOutput() {
+    void executeReplayReturnsExactOriginalAuthorizationIdFromFullReplayedResponse() {
         UUID accountId = UUID.randomUUID();
         CreditAccountId creditAccountId = CreditAccountId.of(accountId);
         String originalAuthorizationId = "018f5f4b-6a3c-7000-8000-000000000099";
@@ -80,23 +81,39 @@ class AuthorizePurchaseUseCaseTest {
                   "aggregateId": "%s",
                   "aggregateVersion": 3,
                   "responseData": {
-                    "creditAccountId": "%s",
-                    "opened": true,
-                    "creditLimit": "500.00",
-                    "outstandingBalance": "0.00",
-                    "authorizedAmount": "100.00",
-                    "availableLimit": "400.00",
-                    "authorizations": [
-                      {
-                        "authorizationId": "%s",
-                        "amount": "100.00",
-                        "status": "OPEN",
-                        "merchantName": "Store"
-                      }
-                    ]
+                    "account": {
+                      "creditAccountId": "%s",
+                      "opened": true,
+                      "creditLimit": "500.00",
+                      "outstandingBalance": "0.00",
+                      "authorizedAmount": "150.00",
+                      "availableLimit": "350.00",
+                      "authorizations": [
+                        {
+                          "authorizationId": "018f5f4b-6a3c-7000-8000-000000000077",
+                          "amount": "50.00",
+                          "status": "OPEN",
+                          "merchantName": "Other Store"
+                        },
+                        {
+                          "authorizationId": "%s",
+                          "amount": "100.00",
+                          "status": "OPEN",
+                          "merchantName": "Store"
+                        },
+                        {
+                          "authorizationId": "018f5f4b-6a3c-7000-8000-000000000088",
+                          "amount": "25.00",
+                          "status": "OPEN",
+                          "merchantName": "Last Store"
+                        }
+                      ]
+                    },
+                    "authorizationId": "%s",
+                    "replayed": false
                   }
                 }
-                """.formatted(accountId, accountId, originalAuthorizationId);
+                """.formatted(accountId, accountId, originalAuthorizationId, originalAuthorizationId);
 
         when(idempotencyPort.start(any(), eq("AuthorizePurchase"), any(), any()))
                 .thenReturn(new IdempotencyDecision.Replay(responsePayload));
@@ -106,6 +123,7 @@ class AuthorizePurchaseUseCaseTest {
 
         assertThat(output.authorizationId()).isEqualTo(originalAuthorizationId);
         assertThat(output.replayed()).isTrue();
+        verify(uniqueIdGenerator, never()).generate();
         verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
     }
 }
