@@ -7,6 +7,12 @@ import com.sanmoo.eventsourcing.creditaccount.domain.model.*;
 import java.time.Instant;
 import java.util.*;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
+
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CreditAccount {
     private final CreditAccountId id;
     private boolean opened;
@@ -14,9 +20,9 @@ public final class CreditAccount {
     private Money outstandingBalance = Money.zero();
     private Money authorizedAmount = Money.zero();
     private final Map<AuthorizationId, PurchaseAuthorization> authorizations = new LinkedHashMap<>();
+    @Getter
+    @Accessors(fluent = true)
     private long version;
-
-    private CreditAccount(CreditAccountId id) { this.id = id; }
 
     public static CreditAccount rehydrate(CreditAccountId id, List<CreditAccountEvent> history) {
         CreditAccount account = new CreditAccount(id);
@@ -78,8 +84,6 @@ public final class CreditAccount {
     public CreditAccountSnapshot snapshot() {
         return new CreditAccountSnapshot(id, opened, creditLimit, outstandingBalance, authorizedAmount, availableLimit(), Map.copyOf(authorizations));
     }
-
-    public long version() { return version; }
 
     private Money availableLimit() {
         if (creditLimit == null) {
