@@ -64,6 +64,48 @@ class AuthorizePurchaseUseCaseTest {
 
         assertThat(output.account().authorizedAmount()).isEqualTo("100.00");
         assertThat(output.authorizationId()).isEqualTo("018f5f4b-6a3c-7000-8000-000000000002");
+        assertThat(output.account().authorizations())
+                .extracting(PurchaseAuthorizationOutput::authorizationId)
+                .containsExactly("018f5f4b-6a3c-7000-8000-000000000002");
         assertThat(output.replayed()).isFalse();
+    }
+
+    @Test
+    void executeReplayReturnsOriginalAuthorizationIdFromReplayedAccountOutput() {
+        UUID accountId = UUID.randomUUID();
+        CreditAccountId creditAccountId = CreditAccountId.of(accountId);
+        String originalAuthorizationId = "018f5f4b-6a3c-7000-8000-000000000099";
+        String responsePayload = """
+                {
+                  "aggregateId": "%s",
+                  "aggregateVersion": 3,
+                  "responseData": {
+                    "creditAccountId": "%s",
+                    "opened": true,
+                    "creditLimit": "500.00",
+                    "outstandingBalance": "0.00",
+                    "authorizedAmount": "100.00",
+                    "availableLimit": "400.00",
+                    "authorizations": [
+                      {
+                        "authorizationId": "%s",
+                        "amount": "100.00",
+                        "status": "OPEN",
+                        "merchantName": "Store"
+                      }
+                    ]
+                  }
+                }
+                """.formatted(accountId, accountId, originalAuthorizationId);
+
+        when(idempotencyPort.start(any(), eq("AuthorizePurchase"), any(), any()))
+                .thenReturn(new IdempotencyDecision.Replay(responsePayload));
+
+        var input = new AuthorizePurchaseInput("key-1", creditAccountId, Money.of("100.00"), "Store");
+        var output = useCase.execute(input);
+
+        assertThat(output.authorizationId()).isEqualTo(originalAuthorizationId);
+        assertThat(output.replayed()).isTrue();
+        verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
     }
 }

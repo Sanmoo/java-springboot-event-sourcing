@@ -26,10 +26,26 @@ public class AuthorizePurchaseUseCase {
                         authorizationId, input.amount(), input.merchantName(), now()),
                 result -> new AuthorizePurchaseOutput(
                         result.output(),
-                        authorizationId.value().toString(),
+                        authorizationIdFor(result, authorizationId),
                         result.replayed()
                 )
         );
+    }
+
+    private String authorizationIdFor(
+            CreditAccountUseCaseSupport.ExecutionResult result,
+            AuthorizationId generatedAuthorizationId
+    ) {
+        if (!result.replayed()) {
+            return generatedAuthorizationId.value().toString();
+        }
+
+        var authorizations = result.output().authorizations();
+        if (authorizations == null || authorizations.isEmpty()) {
+            return generatedAuthorizationId.value().toString();
+        }
+
+        return authorizations.getLast().authorizationId();
     }
 
     private Instant now() {

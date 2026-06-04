@@ -105,6 +105,44 @@ class CreditAccountControllerIT {
     }
 
     @Test
+    void authorizesAndReleasesUsingReturnedAuthorizationId() {
+        var openResponse = restTemplate.postForEntity(baseUrl, createRequest(null), Map.class);
+        assertThat(openResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String accountId = (String) openResponse.getBody().get("creditAccountId");
+
+        var limitResponse = restTemplate.postForEntity(
+                baseUrl + "/" + accountId + "/credit-limit",
+                new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()),
+                Map.class
+        );
+        assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        var authResponse = restTemplate.postForEntity(
+                baseUrl + "/" + accountId + "/purchases/authorizations",
+                new HttpEntity<>(Map.of(
+                        "amount", "100.00",
+                        "merchantName", "Store"
+                ), createHeaders()),
+                Map.class
+        );
+        assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String authorizationId = (String) authResponse.getBody().get("authorizationId");
+        assertThat(authorizationId).isNotBlank();
+
+        var releaseResponse = restTemplate.postForEntity(
+                baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/release",
+                createRequest(null),
+                Map.class
+        );
+        assertThat(releaseResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        var getAfterRelease = restTemplate.getForEntity(baseUrl + "/" + accountId, Map.class);
+        assertThat(getAfterRelease.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(getAfterRelease.getBody()).containsEntry("authorizedAmount", "0.00");
+        assertThat(getAfterRelease.getBody()).containsEntry("availableLimit", "500.00");
+    }
+
+    @Test
     void idempotencyKeyReturnsSameResult() {
         var headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
