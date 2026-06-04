@@ -9,3 +9,5 @@ gradlew.bat
 .project
 .settings/
 bin/
+.factorypath
+category/
