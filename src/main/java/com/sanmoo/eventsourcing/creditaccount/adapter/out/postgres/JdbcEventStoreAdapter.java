@@ -4,6 +4,7 @@ import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictExce
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,6 +38,7 @@ public class JdbcEventStoreAdapter implements EventStorePort {
 
     private final JdbcTemplate jdbcTemplate;
     private final EventTypeMapper eventTypeMapper;
+    private final UniqueIdGenerator uniqueIdGenerator;
     private final RowMapper<EventEnvelope> rowMapper = (rs, rowNum) -> mapEventEnvelope(rs);
 
     @Override
@@ -52,7 +54,7 @@ public class JdbcEventStoreAdapter implements EventStorePort {
             long version = expectedVersion;
             for (CreditAccountEvent event : events) {
                 version++;
-                UUID eventId = UUID.randomUUID();
+                UUID eventId = uniqueIdGenerator.generate();
                 String eventType = eventTypeMapper.eventType(event);
                 String payload = eventTypeMapper.serialize(event);
                 String metadataJson = serializeMetadata(metadata);

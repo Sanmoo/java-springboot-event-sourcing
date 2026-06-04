@@ -7,15 +7,21 @@ import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictExce
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -44,6 +50,7 @@ class JdbcEventStoreAdapterIT {
     @Test
     void appendThenLoadReturnsSameEventTypeAndData() {
         // given
+        RecordingUniqueIdGenerator.clear();
         var aggregateType = "CreditAccount";
         var aggregateId = UUID.randomUUID().toString();
         var creditAccountId = CreditAccountId.newId();
@@ -59,8 +66,11 @@ class JdbcEventStoreAdapterIT {
 
         List<EventEnvelope> envelopes = eventStorePort.loadEvents(aggregateType, aggregateId);
         assertThat(envelopes).hasSize(1);
+        List<UUID> generatedIds = RecordingUniqueIdGenerator.generatedIds();
+        assertThat(generatedIds).hasSize(1);
 
         EventEnvelope envelope = envelopes.getFirst();
+        assertThat(envelope.eventId()).isEqualTo(generatedIds.getFirst());
         assertThat(envelope.event()).isInstanceOf(CreditAccountOpened.class);
         assertThat(envelope.aggregateVersion()).isEqualTo(1);
         assertThat(envelope.aggregateType()).isEqualTo(aggregateType);
@@ -69,6 +79,39 @@ class JdbcEventStoreAdapterIT {
         CreditAccountOpened loaded = (CreditAccountOpened) envelope.event();
         assertThat(loaded.creditAccountId()).isEqualTo(creditAccountId);
         assertThat(loaded.occurredAt()).isEqualTo(occurredAt);
+    }
+
+    @TestConfiguration
+    static class DeterministicIdGeneratorConfiguration {
+
+        @Bean
+        @Primary
+        UniqueIdGenerator uniqueIdGenerator() {
+            return RecordingUniqueIdGenerator::generate;
+        }
+    }
+
+    static final class RecordingUniqueIdGenerator {
+
+        private static final List<UUID> GENERATED_IDS = new CopyOnWriteArrayList<>();
+        private static final AtomicInteger SEQUENCE = new AtomicInteger(1);
+
+        private RecordingUniqueIdGenerator() {
+        }
+
+        static void clear() {
+            GENERATED_IDS.clear();
+        }
+
+        static List<UUID> generatedIds() {
+            return List.copyOf(GENERATED_IDS);
+        }
+
+        static UUID generate() {
+            UUID id = UUID.fromString("018f5f4b-6a3c-7000-8000-%012d".formatted(SEQUENCE.getAndIncrement()));
+            GENERATED_IDS.add(id);
+            return id;
+        }
     }
 
     @Test
