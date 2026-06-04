@@ -13,6 +13,7 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountSnapshot;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.security.MessageDigest;
@@ -59,7 +60,7 @@ public class CreditAccountUseCaseSupport {
             }
             case IdempotencyDecision.Conflict conflict ->
                     throw new IdempotencyConflictException(conflict.message());
-            case IdempotencyDecision.Started started -> {
+            case IdempotencyDecision.Started _ -> {
                 ExecutionResult result = execute(aggregateId, creditAccountId, executor);
                 String payload = serializeResult(result);
                 idempotencyPort.complete(idempotencyKey, payload);
@@ -134,7 +135,7 @@ public class CreditAccountUseCaseSupport {
             Map<String, Object> responseData = (Map<String, Object>) raw.get("responseData");
             CreditAccountOutput output = objectMapper.convertValue(responseData, CreditAccountOutput.class);
             return new ExecutionResult(output, aggregateVersion, true);
-        } catch (Exception e) {
+        } catch (JacksonException | ClassCastException e) {
             throw new RuntimeException("Failed to deserialize idempotency response payload", e);
         }
     }
@@ -146,7 +147,7 @@ public class CreditAccountUseCaseSupport {
             payload.put("aggregateVersion", result.aggregateVersion());
             payload.put("responseData", objectMapper.convertValue(result.output(), Map.class));
             return objectMapper.writeValueAsString(payload);
-        } catch (Exception e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to serialize response for idempotency", e);
         }
     }
@@ -159,7 +160,7 @@ public class CreditAccountUseCaseSupport {
             return HexFormat.of().formatHex(digest);
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 not available", e);
-        } catch (Exception e) {
+        } catch (JacksonException e) {
             throw new RuntimeException("Failed to hash request", e);
         }
     }
