@@ -16,12 +16,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -47,10 +49,18 @@ class JdbcEventStoreAdapterIT {
     @Autowired
     private EventStorePort eventStorePort;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void resetTestState() {
+        jdbcTemplate.update("DELETE FROM event_store");
+        RecordingUniqueIdGenerator.clear();
+    }
+
     @Test
     void appendThenLoadReturnsSameEventTypeAndData() {
         // given
-        RecordingUniqueIdGenerator.clear();
         var aggregateType = "CreditAccount";
         var aggregateId = UUID.randomUUID().toString();
         var creditAccountId = CreditAccountId.newId();
@@ -71,6 +81,7 @@ class JdbcEventStoreAdapterIT {
 
         EventEnvelope envelope = envelopes.getFirst();
         assertThat(envelope.eventId()).isEqualTo(generatedIds.getFirst());
+        assertThat(envelope.eventId().version()).isEqualTo(7);
         assertThat(envelope.event()).isInstanceOf(CreditAccountOpened.class);
         assertThat(envelope.aggregateVersion()).isEqualTo(1);
         assertThat(envelope.aggregateType()).isEqualTo(aggregateType);
@@ -101,6 +112,7 @@ class JdbcEventStoreAdapterIT {
 
         static void clear() {
             GENERATED_IDS.clear();
+            SEQUENCE.set(1);
         }
 
         static List<UUID> generatedIds() {
