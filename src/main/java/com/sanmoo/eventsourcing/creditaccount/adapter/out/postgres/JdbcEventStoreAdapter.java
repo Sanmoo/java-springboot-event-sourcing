@@ -37,7 +37,7 @@ public class JdbcEventStoreAdapter implements EventStorePort {
 
     private final JdbcTemplate jdbcTemplate;
     private final EventTypeMapper eventTypeMapper;
-    private final RowMapper<EventEnvelope> rowMapper = this::mapEventEnvelope;
+    private final RowMapper<EventEnvelope> rowMapper = (rs, rowNum) -> mapEventEnvelope(rs);
 
     @Override
     @Transactional(readOnly = true)
@@ -81,7 +81,7 @@ public class JdbcEventStoreAdapter implements EventStorePort {
         return eventTypeMapper.serializeMetadata(metadata);
     }
 
-    private EventEnvelope mapEventEnvelope(ResultSet rs, int rowNum) throws SQLException {
+    private EventEnvelope mapEventEnvelope(ResultSet rs) throws SQLException {
         UUID eventId = rs.getObject("event_id", UUID.class);
         String aggregateType = rs.getString("aggregate_type");
         String aggregateId = rs.getString("aggregate_id");
