@@ -1,6 +1,7 @@
 import net.ltgt.gradle.errorprone.errorprone
 import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.Confidence
+import org.gradle.api.plugins.quality.Pmd
 
 plugins {
     java
@@ -95,6 +96,14 @@ tasks.pmdMain {
         html.required = true
         xml.required = false
     }
+}
+
+tasks.named<Pmd>("pmdTest") {
+    ruleSetConfig = resources.text.fromFile(file("config/pmd/pmd-test.xml"))
+}
+
+tasks.named<Pmd>("pmdQualityTest") {
+    ruleSetConfig = resources.text.fromFile(file("config/pmd/pmd-test.xml"))
 }
 
 spotbugs {
