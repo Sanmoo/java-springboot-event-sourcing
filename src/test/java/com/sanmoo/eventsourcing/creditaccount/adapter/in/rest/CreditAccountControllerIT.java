@@ -55,7 +55,6 @@ class CreditAccountControllerIT {
         var authResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/purchases/authorizations",
                 new HttpEntity<>(Map.of(
-                        "authorizationId", UUID.randomUUID().toString(),
                         "amount", "100.00",
                         "merchantName", "Store"
                 ), createHeaders()),

@@ -1,5 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
+import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -10,18 +12,21 @@ import java.time.Instant;
 public class AuthorizePurchaseUseCase {
 
     private final CreditAccountUseCaseSupport support;
+    private final UniqueIdGenerator uniqueIdGenerator;
 
     public AuthorizePurchaseOutput execute(AuthorizePurchaseInput input) {
+        var authorizationId = AuthorizationId.of(uniqueIdGenerator.generate());
+
         return support.executeIdempotent(
                 input.idempotencyKey(),
                 "AuthorizePurchase",
                 input.creditAccountId(),
                 input,
                 account -> account.authorizePurchase(
-                        input.authorizationId(), input.amount(), input.merchantName(), now()),
+                        authorizationId, input.amount(), input.merchantName(), now()),
                 result -> new AuthorizePurchaseOutput(
                         result.output(),
-                        input.authorizationId().value().toString(),
+                        authorizationId.value().toString(),
                         result.replayed()
                 )
         );

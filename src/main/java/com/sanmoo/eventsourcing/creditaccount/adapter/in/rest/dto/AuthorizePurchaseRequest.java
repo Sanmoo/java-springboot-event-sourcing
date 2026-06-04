@@ -8,7 +8,6 @@ import java.math.BigDecimal;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AuthorizePurchaseRequest(
-        @NotNull @JsonProperty("authorizationId") String authorizationId,
         @NotNull @JsonProperty("amount") BigDecimal amount,
         @NotBlank @JsonProperty("merchantName") String merchantName
 ) {

@@ -55,9 +55,8 @@ public class CreditAccountController {
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody AuthorizePurchaseRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
-        var authorizationId = AuthorizationId.of(UUID.fromString(request.authorizationId()));
         var input = new AuthorizePurchaseInput(
-                idempotencyKey, creditAccountId, authorizationId,
+                idempotencyKey, creditAccountId,
                 Money.positive(request.amount()), request.merchantName());
         var output = authorizePurchaseUseCase.execute(input);
         Map<String, Object> response = new LinkedHashMap<>(toMap(output.account()));
