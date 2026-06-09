@@ -193,4 +193,26 @@ class JdbcEventStoreAdapterIT {
         )
                 .isInstanceOf(ConcurrencyConflictException.class);
     }
+
+    @Test
+    void appendPersistsVersionedEventTypeName() {
+        // given
+        var aggregateType = "CreditAccount";
+        var aggregateId = UUID.randomUUID().toString();
+        var creditAccountId = CreditAccountId.of(UUID.randomUUID());
+
+        // when
+        eventStorePort.appendEvents(
+                aggregateType, aggregateId, 0,
+                List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
+                Map.of());
+
+        // then
+        String eventType = jdbcTemplate.queryForObject(
+                "SELECT event_type FROM event_store WHERE aggregate_type = ? AND aggregate_id = ?",
+                String.class,
+                aggregateType,
+                aggregateId);
+        assertThat(eventType).isEqualTo("credit-account.opened.v1");
+    }
 }
