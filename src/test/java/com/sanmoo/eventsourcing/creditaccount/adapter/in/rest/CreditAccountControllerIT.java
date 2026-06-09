@@ -3,12 +3,14 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -22,6 +24,9 @@ class CreditAccountControllerIT {
 
     @LocalServerPort
     private int port;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private RestTemplate restTemplate;
     private String baseUrl;
@@ -143,6 +148,21 @@ class CreditAccountControllerIT {
         assertThat(getAfterRelease.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(getAfterRelease.getBody()).containsEntry("authorizedAmount", "0.00");
         assertThat(getAfterRelease.getBody()).containsEntry("availableLimit", "500.00");
+    }
+
+    @Test
+    void idempotencyRecordsDoNotHaveDurableStartedStatusColumn() {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_name = 'idempotency_records'
+                  AND column_name = 'status'
+                """,
+                Integer.class
+        );
+
+        assertThat(count).isZero();
     }
 
     @Test
