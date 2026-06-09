@@ -20,13 +20,13 @@ import tools.jackson.databind.ObjectMapper;
 public class EventTypeMapper {
 
     private static final Map<String, Class<? extends CreditAccountEvent>> TYPE_TO_CLASS = Map.of(
-            "CreditAccountOpened", CreditAccountOpened.class,
-            "CreditLimitAssigned", CreditLimitAssigned.class,
-            "CreditLimitChanged", CreditLimitChanged.class,
-            "PurchaseAuthorized", PurchaseAuthorized.class,
-            "PurchaseCaptured", PurchaseCaptured.class,
-            "PurchaseAuthorizationReleased", PurchaseAuthorizationReleased.class,
-            "PaymentReceived", PaymentReceived.class
+            "credit-account.opened.v1", CreditAccountOpened.class,
+            "credit-account.credit-limit-assigned.v1", CreditLimitAssigned.class,
+            "credit-account.credit-limit-changed.v1", CreditLimitChanged.class,
+            "purchase.authorized.v1", PurchaseAuthorized.class,
+            "purchase.captured.v1", PurchaseCaptured.class,
+            "purchase.authorization-released.v1", PurchaseAuthorizationReleased.class,
+            "payment.received.v1", PaymentReceived.class
     );
 
     private static final Map<Class<? extends CreditAccountEvent>, String> CLASS_TO_TYPE;
