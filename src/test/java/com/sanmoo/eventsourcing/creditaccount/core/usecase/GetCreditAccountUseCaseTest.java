@@ -1,5 +1,9 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.CreditAccountOutput;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.GetCreditAccountInput;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.PurchaseAuthorizationOutput;
+
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
