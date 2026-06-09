@@ -51,7 +51,7 @@ public class JdbcIdempotencyAdapter implements IdempotencyPort {
             jdbcTemplate.execute(SET_LOCK_TIMEOUT_SQL);
             jdbcTemplate.query(ADVISORY_LOCK_SQL, rs -> null, lockId);
         } catch (CannotAcquireLockException e) {
-            throw new IdempotencyConflictException("idempotency key is currently being processed");
+            throw new IdempotencyConflictException("idempotency key is currently being processed", e);
         }
     }
 

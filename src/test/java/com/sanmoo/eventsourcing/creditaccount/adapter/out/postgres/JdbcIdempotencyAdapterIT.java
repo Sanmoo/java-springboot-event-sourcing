@@ -90,10 +90,9 @@ class JdbcIdempotencyAdapterIT {
         var firstHasLock = new CountDownLatch(1);
         var releaseFirst = new CountDownLatch(1);
         var secondAcquiredLock = new AtomicBoolean(false);
-        var executor = Executors.newFixedThreadPool(2);
         var transactionTemplate = new TransactionTemplate(transactionManager);
 
-        try {
+        try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
                 idempotencyPort.lockKey(key);
                 firstHasLock.countDown();
@@ -119,8 +118,6 @@ class JdbcIdempotencyAdapterIT {
             first.get(10, TimeUnit.SECONDS);
             second.get(10, TimeUnit.SECONDS);
             assertThat(secondAcquiredLock).isTrue();
-        } finally {
-            executor.shutdownNow();
         }
     }
 
@@ -129,10 +126,9 @@ class JdbcIdempotencyAdapterIT {
         var firstHasLock = new CountDownLatch(1);
         var secondAcquiredLock = new CountDownLatch(1);
         var releaseFirst = new CountDownLatch(1);
-        var executor = Executors.newFixedThreadPool(2);
         var transactionTemplate = new TransactionTemplate(transactionManager);
 
-        try {
+        try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
                 idempotencyPort.lockKey("key-a-" + UUID.randomUUID());
                 firstHasLock.countDown();
@@ -155,8 +151,6 @@ class JdbcIdempotencyAdapterIT {
             releaseFirst.countDown();
             first.get(10, TimeUnit.SECONDS);
             second.get(10, TimeUnit.SECONDS);
-        } finally {
-            executor.shutdownNow();
         }
     }
 }
