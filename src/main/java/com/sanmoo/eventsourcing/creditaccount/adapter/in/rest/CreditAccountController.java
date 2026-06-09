@@ -2,6 +2,7 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.*;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.*;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.*;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -1,5 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ChangeCreditLimitInput;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ChangeCreditLimitOutput;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

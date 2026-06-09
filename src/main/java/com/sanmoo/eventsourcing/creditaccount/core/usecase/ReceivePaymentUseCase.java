@@ -1,5 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReceivePaymentInput;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReceivePaymentOutput;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
