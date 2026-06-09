@@ -2,13 +2,14 @@ package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import com.sanmoo.eventsourcing.creditaccount.domain.CreditAccount;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
@@ -23,6 +24,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,7 @@ public class CreditAccountUseCaseSupport {
     private final IdempotencyPort idempotencyPort;
     private final ObjectMapper objectMapper;
 
+    @Transactional
     public <I, O> O executeIdempotent(
             String idempotencyKey,
             String commandType,
@@ -47,22 +50,30 @@ public class CreditAccountUseCaseSupport {
         String aggregateId = creditAccountId.value().toString();
         String requestHash = calculateRequestHash(input);
 
-        IdempotencyDecision decision = idempotencyPort.start(idempotencyKey, commandType, aggregateId, requestHash);
+        idempotencyPort.lockKey(idempotencyKey);
 
-        return switch (decision) {
-            case IdempotencyDecision.Replay replay -> {
-                ExecutionResult result = deserializeReplay(replay);
-                yield outputMapper.apply(result);
+        Optional<IdempotencyRecord> existing = idempotencyPort.findByKey(idempotencyKey);
+        if (existing.isPresent()) {
+            IdempotencyRecord record = existing.get();
+            if (!requestHash.equals(record.requestHash())) {
+                throw new IdempotencyConflictException("idempotency key reused with different request hash");
             }
-            case IdempotencyDecision.Conflict conflict ->
-                    throw new IdempotencyConflictException(conflict.message());
-            case IdempotencyDecision.Started _ -> {
-                ExecutionResult result = execute(aggregateId, creditAccountId, executor);
-                String payload = serializeResult(result);
-                idempotencyPort.complete(idempotencyKey, payload);
-                yield outputMapper.apply(result);
-            }
-        };
+            ExecutionResult result = deserializeReplay(record.responsePayload());
+            verifyReplayVersion(record, result);
+            return outputMapper.apply(result);
+        }
+
+        ExecutionResult result = execute(aggregateId, creditAccountId, executor, idempotencyKey, commandType, requestHash);
+        String payload = serializeResult(result);
+        idempotencyPort.saveResult(
+                idempotencyKey,
+                commandType,
+                aggregateId,
+                requestHash,
+                payload,
+                result.aggregateVersion()
+        );
+        return outputMapper.apply(result);
     }
 
     public CreditAccountOutput loadAccountOutput(CreditAccountId creditAccountId) {
@@ -76,7 +87,7 @@ public class CreditAccountUseCaseSupport {
         return buildOutput(account);
     }
 
-    private ExecutionResult execute(String aggregateId, CreditAccountId creditAccountId, CommandExecutor executor) {
+    private ExecutionResult execute(String aggregateId, CreditAccountId creditAccountId, CommandExecutor executor, String idempotencyKey, String commandType, String requestHash) {
         List<CreditAccountEvent> history = loadHistory(aggregateId);
         CreditAccount account = CreditAccount.rehydrate(creditAccountId, history);
 
@@ -84,8 +95,13 @@ public class CreditAccountUseCaseSupport {
         long expectedVersion = account.version();
         account.applyAll(newEvents);
 
+        Map<String, String> metadata = Map.of(
+                "idempotencyKey", idempotencyKey,
+                "commandType", commandType,
+                "requestHash", requestHash
+        );
         AppendResult appendResult = eventStore.appendEvents(
-                AGGREGATE_TYPE, aggregateId, expectedVersion, newEvents, Map.of());
+                AGGREGATE_TYPE, aggregateId, expectedVersion, newEvents, metadata);
 
         CreditAccountOutput output = buildOutput(account);
         return new ExecutionResult(output, appendResult.newAggregateVersion(), false);
@@ -123,9 +139,9 @@ public class CreditAccountUseCaseSupport {
         );
     }
 
-    private ExecutionResult deserializeReplay(IdempotencyDecision.Replay replay) {
+    private ExecutionResult deserializeReplay(String responsePayload) {
         try {
-            Map<String, Object> raw = objectMapper.readValue(replay.responsePayload(), objectMapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, Object.class));
+            Map<String, Object> raw = objectMapper.readValue(responsePayload, objectMapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, Object.class));
             long aggregateVersion = ((Number) raw.get("aggregateVersion")).longValue();
             @SuppressWarnings("unchecked")
             Map<String, Object> responseData = (Map<String, Object>) raw.get("responseData");
@@ -133,6 +149,13 @@ public class CreditAccountUseCaseSupport {
             return new ExecutionResult(output, aggregateVersion, true);
         } catch (JacksonException | ClassCastException e) {
             throw new RuntimeException("Failed to deserialize idempotency response payload", e);
+        }
+    }
+
+    private void verifyReplayVersion(IdempotencyRecord record, ExecutionResult result) {
+        if (record.aggregateVersion() != result.aggregateVersion()) {
+            throw new RuntimeException("Stored idempotency aggregate version does not match replay payload for key: "
+                    + record.idempotencyKey());
         }
     }
 

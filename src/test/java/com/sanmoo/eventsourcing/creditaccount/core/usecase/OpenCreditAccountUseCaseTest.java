@@ -2,8 +2,8 @@ package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,8 +38,8 @@ class OpenCreditAccountUseCaseTest {
 
     @Test
     void executeAppendsCreditAccountOpenedAtExpectedVersionZero() {
-        when(idempotencyPort.start(any(), eq("OpenCreditAccount"), any(), any()))
-                .thenReturn(new IdempotencyDecision.Started("key-1"));
+        doNothing().when(idempotencyPort).lockKey(anyString());
+        when(idempotencyPort.findByKey(anyString())).thenReturn(java.util.Optional.empty());
         when(eventStore.loadEvents(any(), any())).thenReturn(List.of());
         when(eventStore.appendEvents(any(), any(), anyLong(), anyList(), anyMap()))
                 .thenReturn(new AppendResult(1L));
@@ -74,8 +74,17 @@ class OpenCreditAccountUseCaseTest {
                 "responseData", previousData
         ));
 
-        when(idempotencyPort.start(any(), eq("OpenCreditAccount"), any(), any()))
-                .thenReturn(new IdempotencyDecision.Replay(previousPayload));
+        doNothing().when(idempotencyPort).lockKey(anyString());
+        when(idempotencyPort.findByKey(eq("key-2"))).thenReturn(java.util.Optional.of(
+                new IdempotencyRecord(
+                        "key-2",
+                        "OpenCreditAccount",
+                        "550e8400-e29b-41d4-a716-446655440000",
+                        calculateRequestHash(new OpenCreditAccountInput("key-2")),
+                        previousPayload,
+                        1L
+                )
+        ));
 
         var input = new OpenCreditAccountInput("key-2");
         var output = useCase.execute(input);
@@ -83,5 +92,11 @@ class OpenCreditAccountUseCaseTest {
         verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
         assertThat(output.account().creditAccountId()).isEqualTo("550e8400-e29b-41d4-a716-446655440000");
         assertThat(output.replayed()).isTrue();
+    }
+
+    private String calculateRequestHash(Object input) throws Exception {
+        byte[] serialized = objectMapper.writeValueAsBytes(input);
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        return java.util.HexFormat.of().formatHex(md.digest(serialized));
     }
 }

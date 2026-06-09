@@ -3,8 +3,9 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,24 +20,20 @@ class JdbcIdempotencyAdapterIT {
     private IdempotencyPort idempotencyPort;
 
     @Test
-    void firstKeyHashesToStarted() {
+    void firstKeyReturnsEmptyBeforeCompletion() {
         // given
         var key = UUID.randomUUID().toString();
-        var commandType = "CreateAccount";
-        var aggregateId = UUID.randomUUID().toString();
-        var requestHash = "hash-123";
 
         // when
-        IdempotencyDecision decision = idempotencyPort.start(key, commandType, aggregateId, requestHash);
+        idempotencyPort.lockKey(key);
+        Optional<IdempotencyRecord> found = idempotencyPort.findByKey(key);
 
         // then
-        assertThat(decision).isInstanceOf(IdempotencyDecision.Started.class);
-        var started = (IdempotencyDecision.Started) decision;
-        assertThat(started.key()).isEqualTo(key);
+        assertThat(found).isEmpty();
     }
 
     @Test
-    void repeatedKeyWithSameHashReturnsReplay() {
+    void completedKeyReturnsRecord() {
         // given
         var key = UUID.randomUUID().toString();
         var commandType = "CreateAccount";
@@ -44,33 +41,32 @@ class JdbcIdempotencyAdapterIT {
         var requestHash = "hash-456";
         var responsePayload = "{\"status\":\"ok\"}";
 
-        // when - first start + complete
-        IdempotencyDecision first = idempotencyPort.start(key, commandType, aggregateId, requestHash);
-        assertThat(first).isInstanceOf(IdempotencyDecision.Started.class);
-        idempotencyPort.complete(key, responsePayload);
+        // when
+        idempotencyPort.lockKey(key);
+        idempotencyPort.saveResult(key, commandType, aggregateId, requestHash, responsePayload, 1L);
 
-        // then - repeated start with same key and hash returns Replay
-        IdempotencyDecision second = idempotencyPort.start(key, commandType, aggregateId, requestHash);
-        assertThat(second).isInstanceOf(IdempotencyDecision.Replay.class);
-        var replay = (IdempotencyDecision.Replay) second;
-        assertThat(replay.responsePayload()).isEqualTo(responsePayload);
+        // then
+        Optional<IdempotencyRecord> found = idempotencyPort.findByKey(key);
+        assertThat(found).isPresent();
+        assertThat(found.get().responsePayload()).isEqualTo(responsePayload);
+        assertThat(found.get().aggregateVersion()).isEqualTo(1L);
     }
 
     @Test
-    void repeatedKeyWithDifferentHashReturnsConflict() {
+    void repeatedKeyWithDifferentRequestHashReturnsRecord() {
         // given
         var key = UUID.randomUUID().toString();
         var commandType = "CreateAccount";
         var aggregateId = UUID.randomUUID().toString();
         var requestHash1 = "hash-789";
-        var requestHash2 = "hash-different";
 
-        // when - start with first hash
-        IdempotencyDecision first = idempotencyPort.start(key, commandType, aggregateId, requestHash1);
-        assertThat(first).isInstanceOf(IdempotencyDecision.Started.class);
+        // when - complete with first hash
+        idempotencyPort.lockKey(key);
+        idempotencyPort.saveResult(key, commandType, aggregateId, requestHash1, "payload", 1L);
 
-        // then - start again with same key but different hash returns Conflict
-        IdempotencyDecision second = idempotencyPort.start(key, commandType, aggregateId, requestHash2);
-        assertThat(second).isInstanceOf(IdempotencyDecision.Conflict.class);
+        // then - findByKey returns the record regardless of hash
+        Optional<IdempotencyRecord> found = idempotencyPort.findByKey(key);
+        assertThat(found).isPresent();
+        assertThat(found.get().requestHash()).isEqualTo(requestHash1);
     }
 }
