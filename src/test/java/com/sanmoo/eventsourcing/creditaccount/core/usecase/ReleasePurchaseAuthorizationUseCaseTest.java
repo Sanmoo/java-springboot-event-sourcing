@@ -5,7 +5,6 @@ import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReleasePurchaseAu
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
@@ -51,8 +50,8 @@ class ReleasePurchaseAuthorizationUseCaseTest {
         AuthorizationId authorizationId = AuthorizationId.of(authId);
         Instant now = Instant.now();
 
-        when(idempotencyPort.start(any(), eq("ReleasePurchaseAuthorization"), any(), any()))
-                .thenReturn(new IdempotencyDecision.Started("key-1"));
+        doNothing().when(idempotencyPort).lockKey(anyString());
+        when(idempotencyPort.findByKey(anyString())).thenReturn(java.util.Optional.empty());
         when(eventStore.loadEvents(any(), any())).thenReturn(List.of(
                 new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 1,
                         new CreditAccountOpened(creditAccountId, now), now, Map.of()),

@@ -5,8 +5,8 @@ import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.PurchaseAuthoriza
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyDecision;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
@@ -48,8 +48,8 @@ class AuthorizePurchaseUseCaseTest {
         CreditAccountId creditAccountId = CreditAccountId.of(accountId);
         Instant now = Instant.now();
 
-        when(idempotencyPort.start(any(), eq("AuthorizePurchase"), any(), any()))
-                .thenReturn(new IdempotencyDecision.Started("key-1"));
+        doNothing().when(idempotencyPort).lockKey(anyString());
+        when(idempotencyPort.findByKey(anyString())).thenReturn(java.util.Optional.empty());
         when(eventStore.loadEvents(any(), any())).thenReturn(List.of(
                 new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 1,
                         new CreditAccountOpened(creditAccountId, now), now, Map.of()),
@@ -96,8 +96,17 @@ class AuthorizePurchaseUseCaseTest {
                 )
         ));
 
-        when(idempotencyPort.start(any(), eq("AuthorizePurchase"), any(), any()))
-                .thenReturn(new IdempotencyDecision.Replay(responsePayload));
+        doNothing().when(idempotencyPort).lockKey(anyString());
+        when(idempotencyPort.findByKey(eq("key-1"))).thenReturn(java.util.Optional.of(
+                new IdempotencyRecord(
+                        "key-1",
+                        "AuthorizePurchase",
+                        accountId.toString(),
+                        calculateRequestHash(new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store")),
+                        responsePayload,
+                        3L
+                )
+        ));
 
         var input = new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store");
         var output = useCase.execute(input);
@@ -107,4 +116,9 @@ class AuthorizePurchaseUseCaseTest {
         verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
     }
 
+    private String calculateRequestHash(Object input) throws Exception {
+        byte[] serialized = objectMapper.writeValueAsBytes(input);
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        return java.util.HexFormat.of().formatHex(md.digest(serialized));
+    }
 }

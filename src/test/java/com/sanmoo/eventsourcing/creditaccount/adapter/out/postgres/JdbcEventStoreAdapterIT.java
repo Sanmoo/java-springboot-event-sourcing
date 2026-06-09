@@ -68,8 +68,13 @@ class JdbcEventStoreAdapterIT {
         var openedEvent = new CreditAccountOpened(creditAccountId, occurredAt);
 
         // when
+        Map<String, String> metadata = Map.of(
+                "idempotencyKey", "metadata-key-1",
+                "commandType", "OpenCreditAccount",
+                "requestHash", "hash-1"
+        );
         AppendResult result = eventStorePort.appendEvents(
-                aggregateType, aggregateId, 0, List.of(openedEvent), Map.of());
+                aggregateType, aggregateId, 0, List.of(openedEvent), metadata);
 
         // then
         assertThat(result.newAggregateVersion()).isEqualTo(1);
@@ -80,6 +85,10 @@ class JdbcEventStoreAdapterIT {
         assertThat(generatedIds).hasSize(1);
 
         EventEnvelope envelope = envelopes.getFirst();
+        assertThat(envelope.metadata())
+                .containsEntry("idempotencyKey", "metadata-key-1")
+                .containsEntry("commandType", "OpenCreditAccount")
+                .containsEntry("requestHash", "hash-1");
         assertThat(envelope.eventId()).isEqualTo(generatedIds.getFirst());
         assertThat(envelope.eventId().version()).isEqualTo(7);
         assertThat(envelope.event()).isInstanceOf(CreditAccountOpened.class);
