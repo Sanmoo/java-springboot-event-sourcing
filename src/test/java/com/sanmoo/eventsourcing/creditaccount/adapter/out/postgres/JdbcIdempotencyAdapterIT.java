@@ -2,15 +2,24 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -19,54 +28,135 @@ class JdbcIdempotencyAdapterIT {
     @Autowired
     private IdempotencyPort idempotencyPort;
 
-    @Test
-    void firstKeyReturnsEmptyBeforeCompletion() {
-        // given
-        var key = UUID.randomUUID().toString();
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
-        // when
-        idempotencyPort.lockKey(key);
-        Optional<IdempotencyRecord> found = idempotencyPort.findByKey(key);
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
-        // then
-        assertThat(found).isEmpty();
+    @BeforeEach
+    void cleanDatabase() {
+        jdbcTemplate.update("DELETE FROM idempotency_records");
     }
 
     @Test
-    void completedKeyReturnsRecord() {
-        // given
+    void missingKeyReturnsEmptyResult() {
+        Optional<IdempotencyRecord> result = idempotencyPort.findByKey(UUID.randomUUID().toString());
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void saveResultPersistsCompletedReplayRecord() {
         var key = UUID.randomUUID().toString();
         var commandType = "CreateAccount";
         var aggregateId = UUID.randomUUID().toString();
         var requestHash = "hash-456";
         var responsePayload = "{\"status\":\"ok\"}";
 
-        // when
-        idempotencyPort.lockKey(key);
-        idempotencyPort.saveResult(key, commandType, aggregateId, requestHash, responsePayload, 1L);
+        idempotencyPort.saveResult(key, commandType, aggregateId, requestHash, responsePayload, 7L);
 
-        // then
-        Optional<IdempotencyRecord> found = idempotencyPort.findByKey(key);
-        assertThat(found).isPresent();
-        assertThat(found.get().responsePayload()).isEqualTo(responsePayload);
-        assertThat(found.get().aggregateVersion()).isEqualTo(1L);
+        Optional<IdempotencyRecord> loaded = idempotencyPort.findByKey(key);
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().idempotencyKey()).isEqualTo(key);
+        assertThat(loaded.get().commandType()).isEqualTo(commandType);
+        assertThat(loaded.get().aggregateId()).isEqualTo(aggregateId);
+        assertThat(loaded.get().requestHash()).isEqualTo(requestHash);
+        assertThat(loaded.get().responsePayload()).isEqualTo(responsePayload);
+        assertThat(loaded.get().aggregateVersion()).isEqualTo(7L);
     }
 
     @Test
-    void repeatedKeyWithDifferentRequestHashReturnsRecord() {
-        // given
+    void findByKeyExposesStoredHashForCoreConflictDecision() {
         var key = UUID.randomUUID().toString();
-        var commandType = "CreateAccount";
-        var aggregateId = UUID.randomUUID().toString();
-        var requestHash1 = "hash-789";
+        idempotencyPort.saveResult(
+                key,
+                "CreateAccount",
+                UUID.randomUUID().toString(),
+                "original-hash",
+                "{\"status\":\"ok\"}",
+                1L
+        );
 
-        // when - complete with first hash
-        idempotencyPort.lockKey(key);
-        idempotencyPort.saveResult(key, commandType, aggregateId, requestHash1, "payload", 1L);
+        Optional<IdempotencyRecord> loaded = idempotencyPort.findByKey(key);
 
-        // then - findByKey returns the record regardless of hash
-        Optional<IdempotencyRecord> found = idempotencyPort.findByKey(key);
-        assertThat(found).isPresent();
-        assertThat(found.get().requestHash()).isEqualTo(requestHash1);
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().requestHash()).isEqualTo("original-hash");
+    }
+
+    @Test
+    void lockKeySerializesConcurrentTransactionsForSameKey() throws Exception {
+        var key = UUID.randomUUID().toString();
+        var firstHasLock = new CountDownLatch(1);
+        var releaseFirst = new CountDownLatch(1);
+        var secondAcquiredLock = new AtomicBoolean(false);
+        var executor = Executors.newFixedThreadPool(2);
+        var transactionTemplate = new TransactionTemplate(transactionManager);
+
+        try {
+            var first = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+                idempotencyPort.lockKey(key);
+                firstHasLock.countDown();
+                try {
+                    assertThat(releaseFirst.await(10, TimeUnit.SECONDS)).isTrue();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                }
+            }));
+
+            assertThat(firstHasLock.await(10, TimeUnit.SECONDS)).isTrue();
+
+            var second = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+                idempotencyPort.lockKey(key);
+                secondAcquiredLock.set(true);
+            }));
+
+            Thread.sleep(250);
+            assertThat(secondAcquiredLock).isFalse();
+
+            releaseFirst.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+            assertThat(secondAcquiredLock).isTrue();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void lockKeyAllowsDifferentKeysToProceedConcurrently() throws Exception {
+        var firstHasLock = new CountDownLatch(1);
+        var secondAcquiredLock = new CountDownLatch(1);
+        var releaseFirst = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        var transactionTemplate = new TransactionTemplate(transactionManager);
+
+        try {
+            var first = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+                idempotencyPort.lockKey("key-a-" + UUID.randomUUID());
+                firstHasLock.countDown();
+                try {
+                    assertThat(releaseFirst.await(10, TimeUnit.SECONDS)).isTrue();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                }
+            }));
+
+            assertThat(firstHasLock.await(10, TimeUnit.SECONDS)).isTrue();
+
+            var second = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+                idempotencyPort.lockKey("key-b-" + UUID.randomUUID());
+                secondAcquiredLock.countDown();
+            }));
+
+            assertThat(secondAcquiredLock.await(2, TimeUnit.SECONDS)).isTrue();
+            releaseFirst.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+        }
     }
 }
