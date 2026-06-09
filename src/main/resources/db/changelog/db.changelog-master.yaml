@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/001-create-event-store.yaml
   - include:
       file: db/changelog/002-create-idempotency-records.yaml
+  - include:
+      file: db/changelog/003-refine-idempotency-records.yaml

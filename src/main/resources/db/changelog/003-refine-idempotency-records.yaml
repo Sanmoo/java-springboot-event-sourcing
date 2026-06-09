@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-refine-idempotency-records
+      author: sanmoo
+      changes:
+        - delete:
+            tableName: idempotency_records
+            where: response_payload IS NULL
+        - addColumn:
+            tableName: idempotency_records
+            columns:
+              - column:
+                  name: aggregate_version
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - dropDefaultValue:
+            tableName: idempotency_records
+            columnName: aggregate_version
+            columnDataType: BIGINT
+        - addNotNullConstraint:
+            tableName: idempotency_records
+            columnName: response_payload
+            columnDataType: TEXT
+        - dropColumn:
+            tableName: idempotency_records
+            columnName: status
+        - dropColumn:
+            tableName: idempotency_records
+            columnName: completed_at
