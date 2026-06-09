@@ -1,4 +1,4 @@
-package com.sanmoo.eventsourcing.creditaccount.core.usecase;
+package com.sanmoo.eventsourcing.creditaccount.core.usecase.dto;
 
 import java.util.List;
 
