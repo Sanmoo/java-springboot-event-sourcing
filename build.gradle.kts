@@ -158,6 +158,12 @@ tasks.withType<JavaCompile>().configureEach {
     // Revisit when plugin adds this option.
 }
 
+tasks.named<JavaCompile>("compileAcceptanceTestJava") {
+    options.errorprone {
+        disable("UnicodeInCode")
+    }
+}
+
 pitest {
     pitestVersion = "1.25.3"
     junit5PluginVersion = "1.2.1"
