@@ -21,6 +21,7 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorization
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
+import com.sanmoo.eventsourcing.creditaccount.domain.model.PurchaseAuthorizationStatus;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -296,6 +297,9 @@ class CreditAccountTest {
         var events = account.releasePurchaseAuthorization(authorizationId, Instant.parse("2026-06-01T10:03:00Z"));
 
         assertThat(events).containsExactly(new PurchaseAuthorizationReleased(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:03:00Z")));
+        assertThat(account.snapshot().authorizedAmount()).isEqualTo(Money.zero());
+        assertThat(account.snapshot().authorizations().get(authorizationId).status()).isEqualTo(PurchaseAuthorizationStatus.RELEASED);
+        assertThat(account.version()).isEqualTo(4L);
     }
 
     @Test
