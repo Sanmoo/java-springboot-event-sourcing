@@ -47,7 +47,7 @@ public final class CreditAccount {
         if (!newLimit.isGreaterThan(Money.zero())) { throw new InvalidCreditLimitException("credit limit must be positive"); }
         Money committed = outstandingBalance.plus(authorizedAmount);
         if (newLimit.isLessThan(committed)) { throw new InvalidCreditLimitException("new limit is lower than committed balance"); }
-        return List.of(new CreditLimitChanged(id, newLimit, occurredAt));
+        return recordThat(new CreditLimitChanged(id, newLimit, occurredAt));
     }
 
     public List<CreditAccountEvent> authorizePurchase(AuthorizationId authorizationId, Money amount, String merchantName, Instant occurredAt) {

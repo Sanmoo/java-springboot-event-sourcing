@@ -224,6 +224,8 @@ class CreditAccountTest {
         var events = account.changeCreditLimit(Money.of("150.00"), Instant.parse("2026-06-01T10:02:00Z"));
 
         assertThat(events).containsExactly(new CreditLimitChanged(accountId, Money.of("150.00"), Instant.parse("2026-06-01T10:02:00Z")));
+        assertThat(account.snapshot().creditLimit()).isEqualTo(Money.of("150.00"));
+        assertThat(account.version()).isEqualTo(3L);
     }
 
     @Test
