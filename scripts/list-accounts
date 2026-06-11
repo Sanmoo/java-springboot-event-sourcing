@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/api.sh"
+PAGE="${1:-0}"
+SIZE="${2:-20}"
+api_get "/credit-accounts?page=${PAGE}&size=${SIZE}"

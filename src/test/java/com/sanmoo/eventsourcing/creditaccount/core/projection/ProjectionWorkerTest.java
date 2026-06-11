@@ -9,6 +9,7 @@ import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.projection.ProjectionProperties;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -35,10 +36,16 @@ class ProjectionWorkerTest {
                 "CreditAccountOpened", new CreditAccountOpened(CreditAccountId.of(accountId), Instant.now()),
                 java.util.Map.of(), Instant.now());
 
+        TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            org.springframework.transaction.support.TransactionCallback<Object> callback = invocation.getArgument(0);
+            return callback.doInTransaction(null);
+        });
+
         when(outbox.findPending(10)).thenReturn(List.of(event));
         when(summaries.findById(CreditAccountId.of(accountId))).thenReturn(Optional.empty());
 
-        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, props);
+        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, props, transactionTemplate);
         int processed = worker.processOnce();
 
         assertThat(processed).isEqualTo(1);
@@ -62,11 +69,17 @@ class ProjectionWorkerTest {
                 "CreditAccountOpened", new CreditAccountOpened(CreditAccountId.of(accountId), Instant.now()),
                 java.util.Map.of(), Instant.now());
 
+        TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            org.springframework.transaction.support.TransactionCallback<Object> callback = invocation.getArgument(0);
+            return callback.doInTransaction(null);
+        });
+
         when(outbox.findPending(10)).thenReturn(List.of(event));
         when(summaries.findById(any())).thenReturn(Optional.empty());
         when(projector.project(any(), any())).thenThrow(new RuntimeException("boom"));
 
-        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, props);
+        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, props, transactionTemplate);
         int processed = worker.processOnce();
 
         assertThat(processed).isEqualTo(0);

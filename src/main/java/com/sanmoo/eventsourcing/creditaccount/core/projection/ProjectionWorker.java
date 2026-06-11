@@ -8,7 +8,7 @@ import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.projection.ProjectionProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,13 +22,17 @@ public class ProjectionWorker {
     private final CreditAccountSummaryRepository summaries;
     private final CreditAccountSummaryProjector projector;
     private final ProjectionProperties properties;
+    private final TransactionTemplate transactionTemplate;
 
     public int processOnce() {
         List<OutboxEvent> pending = outbox.findPending(properties.getBatchSize());
         int processed = 0;
         for (OutboxEvent event : pending) {
             try {
-                processOne(event);
+                transactionTemplate.execute(status -> {
+                    processOne(event);
+                    return null;
+                });
                 processed++;
             } catch (RuntimeException e) {
                 outbox.markFailed(event.eventId(), e.getClass().getSimpleName() + ": " + e.getMessage());
@@ -37,7 +41,6 @@ public class ProjectionWorker {
         return processed;
     }
 
-    @Transactional
     public void processOne(OutboxEvent event) {
         CreditAccountId id = CreditAccountId.of(UUID.fromString(event.aggregateId()));
         Optional<CreditAccountSummary> current = summaries.findById(id);

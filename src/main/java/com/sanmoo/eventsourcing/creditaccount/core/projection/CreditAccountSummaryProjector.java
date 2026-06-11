@@ -102,9 +102,11 @@ public class CreditAccountSummaryProjector {
         if (event instanceof PaymentReceived payment) {
             BigDecimal newOutstanding = new BigDecimal(s.outstandingBalance())
                     .subtract(payment.amount().amount());
+            BigDecimal limit = s.creditLimit() != null ? new BigDecimal(s.creditLimit()) : BigDecimal.ZERO;
+            BigDecimal newAvailable = limit.subtract(newOutstanding).subtract(new BigDecimal(s.authorizedAmount()));
             return new CreditAccountSummary(
                     s.creditAccountId(), s.opened(), s.creditLimit(),
-                    newOutstanding.toPlainString(), s.authorizedAmount(), s.availableLimit(),
+                    newOutstanding.toPlainString(), s.authorizedAmount(), newAvailable.toPlainString(),
                     s.authorizations(), s.projectedVersion() + 1, lastEventId, payment.occurredAt());
         }
         return s;

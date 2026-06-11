@@ -145,7 +145,7 @@ class CreditAccountSummaryProjectorTest {
         ProjectionTick tick = projector.project(payment, Optional.of(s4));
 
         assertThat(tick.summary().outstandingBalance()).isEqualTo("0.00");
-        assertThat(tick.summary().availableLimit()).isEqualTo("800.00");
+        assertThat(tick.summary().availableLimit()).isEqualTo("1000.00");
     }
 
     @Test

@@ -27,11 +27,12 @@ adapter/out/postgres/  ← Event store, idempotency store
 ### Key Design Decisions
 
 - **Manual event sourcing** with PostgreSQL `event_store` table (JSONB payload)
+- **Outbox pattern**: each appended event also writes a row to `outbox_events` in the same transaction
+- **Asynchronous projection**: a scheduled worker applies outbox events to `credit_account_summary`
+- **Query side reads only the read model**: `GET` endpoints no longer rehydrate the aggregate
+- **`minVersion` query parameter** for read-your-writes consistency
 - **Optimistic locking** via `UNIQUE(aggregate_id, aggregate_version)`
 - **Idempotent commands** via `Idempotency-Key` header and idempotency store
-- **No read models** in MVP — GET rehydrates aggregate from event store
-- **Outbox pattern** planned for future projections/messaging (not yet implemented)
-- **Aggregate-applied domain events**: aggregate command methods validate invariants, create domain events, apply them to aggregate state, and return the already-applied events to the application layer for persistence. This keeps events explicit without requiring a pending-events list.
 
 ## REST Endpoints
 
@@ -43,7 +44,8 @@ adapter/out/postgres/  ← Event store, idempotency store
 | `POST` | `/credit-accounts/{id}/purchases/authorizations/{authId}/capture` | Capture an authorization |
 | `POST` | `/credit-accounts/{id}/purchases/authorizations/{authId}/release` | Release an authorization |
 | `POST` | `/credit-accounts/{id}/payments` | Receive a payment |
-| `GET` | `/credit-accounts/{id}` | Get account state |
+| `GET` | `/credit-accounts` | List account summaries (paginated) |
+| `GET` | `/credit-accounts/{id}` | Get account summary; `?minVersion=N` enables read-your-writes |
 
 All `POST` endpoints require `Idempotency-Key` header.
 
