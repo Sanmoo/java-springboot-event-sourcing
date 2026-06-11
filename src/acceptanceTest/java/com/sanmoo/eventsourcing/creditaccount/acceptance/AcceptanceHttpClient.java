@@ -35,21 +35,16 @@ public class AcceptanceHttpClient {
     private String baseUrl;
     private Duration pollingInterval;
     private Duration pollingTimeout;
-    private volatile boolean initialized;
+    private boolean initialized;
 
     private void ensureInitialized() {
-        if (!initialized) {
-            synchronized (this) {
-                if (!initialized) {
-                    this.rest = new RestTemplate();
-                    int port = environment.getRequiredProperty("local.server.port", Integer.class);
-                    this.baseUrl = "http://localhost:" + port + "/credit-accounts";
-                    this.pollingInterval = Duration.ofMillis(pollingIntervalMs);
-                    this.pollingTimeout = Duration.ofMillis(pollingTimeoutMs);
-                    this.initialized = true;
-                }
-            }
-        }
+        if (initialized) return;
+        this.rest = new RestTemplate();
+        int port = environment.getRequiredProperty("local.server.port", Integer.class);
+        this.baseUrl = "http://localhost:" + port + "/credit-accounts";
+        this.pollingInterval = Duration.ofMillis(pollingIntervalMs);
+        this.pollingTimeout = Duration.ofMillis(pollingTimeoutMs);
+        this.initialized = true;
     }
 
     public Map<String, Object> openAccount() {
