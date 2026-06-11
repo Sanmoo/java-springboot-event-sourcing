@@ -34,19 +34,21 @@ sourceSets {
             runtimeClasspath += sourceSets.main.get().output
         }
     }
+    create("acceptanceTest") {
+        java {
+            compileClasspath += sourceSets.main.get().output
+            compileClasspath += sourceSets.test.get().output
+            runtimeClasspath += sourceSets.main.get().output
+            runtimeClasspath += sourceSets.test.get().output
+        }
+        resources {
+            compileClasspath += sourceSets.test.get().output
+            runtimeClasspath += sourceSets.test.get().output
+        }
+    }
 }
 
-configurations {
-    create("acceptanceTestImplementation") {
-        extendsFrom(configurations.testImplementation.get())
-    }
-    create("acceptanceTestRuntimeOnly") {
-        extendsFrom(configurations.testRuntimeOnly.get())
-    }
-    create("acceptanceTestRuntimeClasspath") {
-        extendsFrom(configurations.named("acceptanceTestImplementation").get(), configurations.named("acceptanceTestRuntimeOnly").get())
-    }
-}
+
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
@@ -80,6 +82,12 @@ configurations {
         extendsFrom(configurations.testImplementation.get())
     }
     named("qualityTestRuntimeOnly") {
+        extendsFrom(configurations.testRuntimeOnly.get())
+    }
+    named("acceptanceTestImplementation") {
+        extendsFrom(configurations.testImplementation.get())
+    }
+    named("acceptanceTestRuntimeOnly") {
         extendsFrom(configurations.testRuntimeOnly.get())
     }
 }
@@ -167,4 +175,18 @@ pitest {
 
 tasks.check {
     dependsOn("qualityTest", "pitest")
+}
+
+tasks.register<Test>("acceptanceTest") {
+    description = "Runs the Cucumber acceptance suite against the real Spring Boot application"
+    group = "verification"
+    testClassesDirs = sourceSets["acceptanceTest"].output.classesDirs
+    classpath = sourceSets["acceptanceTest"].runtimeClasspath
+    useJUnitPlatform()
+    shouldRunAfter(tasks.test)
+    systemProperty("spring.profiles.active", "test")
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = false
+    }
 }
