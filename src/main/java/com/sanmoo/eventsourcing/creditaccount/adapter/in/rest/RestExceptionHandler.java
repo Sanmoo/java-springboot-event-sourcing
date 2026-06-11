@@ -1,7 +1,11 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ProjectionNotReadyResponse;
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
+import com.sanmoo.eventsourcing.creditaccount.core.error.InvalidPageSizeException;
+import com.sanmoo.eventsourcing.creditaccount.core.error.ProjectionNotReadyException;
+import com.sanmoo.eventsourcing.creditaccount.core.error.SummaryNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountAlreadyExistsException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.DomainException;
@@ -36,6 +40,29 @@ public class RestExceptionHandler {
   @ExceptionHandler(AccountNotFoundException.class)
   public ResponseEntity<Map<String, String>> handleAccountNotFound(AccountNotFoundException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("error", ex.getMessage()));
+  }
+
+  @ExceptionHandler(SummaryNotFoundException.class)
+  public ResponseEntity<Map<String, String>> handleSummaryNotFound(SummaryNotFoundException ex) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("error", ex.getMessage()));
+  }
+
+  @ExceptionHandler(ProjectionNotReadyException.class)
+  public ResponseEntity<ProjectionNotReadyResponse> handleProjectionNotReady(ProjectionNotReadyException ex) {
+    return ResponseEntity.status(HttpStatus.ACCEPTED)
+        .body(new ProjectionNotReadyResponse(
+                ex.getMessage(),
+                ex.getCreditAccountId(),
+                ex.getCurrentProjectionVersion(),
+                ex.getRequiredVersion()
+        ));
+  }
+
+  @ExceptionHandler(InvalidPageSizeException.class)
+  public ResponseEntity<Map<String, String>> handleInvalidPageSize(InvalidPageSizeException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(Map.of("error", ex.getMessage()));
   }
 

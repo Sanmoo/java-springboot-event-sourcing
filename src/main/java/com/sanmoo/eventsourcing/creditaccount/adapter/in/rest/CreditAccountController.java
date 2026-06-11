@@ -1,6 +1,8 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.PageResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.*;
+import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.*;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.*;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.*;
@@ -26,6 +28,7 @@ public class CreditAccountController {
     private final ReleasePurchaseAuthorizationUseCase releasePurchaseAuthorizationUseCase;
     private final ReceivePaymentUseCase receivePaymentUseCase;
     private final GetCreditAccountUseCase getCreditAccountUseCase;
+    private final ListCreditAccountsUseCase listCreditAccountsUseCase;
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> openCreditAccount(
@@ -104,11 +107,54 @@ public class CreditAccountController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getAccount(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> getAccount(
+            @PathVariable String id,
+            @RequestParam(value = "minVersion", required = false) Long minVersion) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
-        var input = new GetCreditAccountInput(creditAccountId);
+        var input = new GetCreditAccountInput(creditAccountId, minVersion);
         var output = getCreditAccountUseCase.execute(input);
         return ResponseEntity.ok(toMap(output.account()));
+    }
+
+    @GetMapping
+    public ResponseEntity<PageResponse> listAccounts(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        var input = new ListCreditAccountsInput(page, size);
+        var output = listCreditAccountsUseCase.execute(input);
+        var items = output.page().items().stream()
+                .map(this::summaryToMap)
+                .toList();
+        var response = new PageResponse(
+                items,
+                output.page().page(),
+                output.page().size(),
+                output.page().totalItems(),
+                output.page().totalPages()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    private Map<String, Object> summaryToMap(CreditAccountSummary summary) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("creditAccountId", summary.creditAccountId().toString());
+        data.put("opened", summary.opened());
+        data.put("creditLimit", summary.creditLimit());
+        data.put("outstandingBalance", summary.outstandingBalance());
+        data.put("authorizedAmount", summary.authorizedAmount());
+        data.put("availableLimit", summary.availableLimit());
+        data.put("projectedVersion", summary.projectedVersion());
+        data.put("authorizations", summary.authorizations().stream()
+                .map(auth -> {
+                    Map<String, Object> authMap = new LinkedHashMap<>();
+                    authMap.put("authorizationId", auth.authorizationId().toString());
+                    authMap.put("amount", auth.amount());
+                    authMap.put("status", auth.status());
+                    authMap.put("merchantName", auth.merchantName());
+                    return authMap;
+                })
+                .toList());
+        return data;
     }
 
     private Map<String, Object> toMap(CreditAccountOutput output) {
@@ -119,6 +165,7 @@ public class CreditAccountController {
         data.put("outstandingBalance", output.outstandingBalance());
         data.put("authorizedAmount", output.authorizedAmount());
         data.put("availableLimit", output.availableLimit());
+        data.put("projectedVersion", output.projectedVersion());
         data.put("authorizations", output.authorizations().stream()
                 .map(auth -> {
                     Map<String, Object> authMap = new LinkedHashMap<>();

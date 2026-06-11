@@ -9,5 +9,6 @@ public record CreditAccountOutput(
         String outstandingBalance,
         String authorizedAmount,
         String availableLimit,
-        List<PurchaseAuthorizationOutput> authorizations
+        List<PurchaseAuthorizationOutput> authorizations,
+        Long projectedVersion
 ) {}

@@ -1,6 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
 import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
+import com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ class CreditAccountControllerIT {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ProjectionWorker projectionWorker;
 
     private RestTemplate restTemplate;
     private String baseUrl;
@@ -70,6 +74,9 @@ class CreditAccountControllerIT {
         assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(authResponse.getBody()).containsEntry("authorizationId", authorizationId);
 
+        // Project events before reading summary
+        projectionWorker.processOnce();
+
         // 4. GET /credit-accounts/{id} (verify available limit decreased)
         var getAfterAuth = restTemplate.getForEntity(
                 baseUrl + "/" + accountId,
@@ -86,6 +93,9 @@ class CreditAccountControllerIT {
         );
         assertThat(captureResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
+        // Project events before reading summary
+        projectionWorker.processOnce();
+
         // 6. GET check outstanding balance
         var getAfterCapture = restTemplate.getForEntity(
                 baseUrl + "/" + accountId,
@@ -101,6 +111,9 @@ class CreditAccountControllerIT {
                 Map.class
         );
         assertThat(paymentResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        // Project events before reading summary
+        projectionWorker.processOnce();
 
         // 8. GET check outstanding balance reduced
         var getAfterPayment = restTemplate.getForEntity(
@@ -143,6 +156,9 @@ class CreditAccountControllerIT {
                 Map.class
         );
         assertThat(releaseResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        // Project events before reading summary
+        projectionWorker.processOnce();
 
         var getAfterRelease = restTemplate.getForEntity(baseUrl + "/" + accountId, Map.class);
         assertThat(getAfterRelease.getStatusCode()).isEqualTo(HttpStatus.OK);

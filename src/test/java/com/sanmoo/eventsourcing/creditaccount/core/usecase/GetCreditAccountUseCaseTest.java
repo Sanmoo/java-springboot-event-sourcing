@@ -1,126 +1,95 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
+import com.sanmoo.eventsourcing.creditaccount.core.error.ProjectionNotReadyException;
+import com.sanmoo.eventsourcing.creditaccount.core.error.SummaryNotFoundException;
+import com.sanmoo.eventsourcing.creditaccount.core.port.CreditAccountSummaryRepository;
+import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.CreditAccountOutput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.GetCreditAccountInput;
-import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.PurchaseAuthorizationOutput;
-
-import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
-import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
-import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotFoundException;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorizationReleased;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorized;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCaptured;
-import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
-import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
-import tools.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class GetCreditAccountUseCaseTest {
 
-    private EventStore eventStore;
-    private IdempotencyRepository idempotencyRepository;
-    private ObjectMapper objectMapper;
-    private CreditAccountUseCaseSupport support;
-    private GetCreditAccountUseCase useCase;
-
-    @BeforeEach
-    void setUp() {
-        eventStore = mock(EventStore.class);
-        idempotencyRepository = mock(IdempotencyRepository.class);
-        objectMapper = new ObjectMapper();
-        support = new CreditAccountUseCaseSupport(eventStore, idempotencyRepository, objectMapper);
-        useCase = new GetCreditAccountUseCase(support);
-    }
+    private final CreditAccountSummaryRepository repo = mock(CreditAccountSummaryRepository.class);
+    private final GetCreditAccountUseCase useCase = new GetCreditAccountUseCase(repo);
 
     @Test
-    void executeReturnsAccountState() {
-        UUID accountId = UUID.randomUUID();
-        CreditAccountId creditAccountId = CreditAccountId.of(accountId);
-        Instant now = Instant.now();
+    void returnsAccountWhenSummaryFound() {
+        UUID id = UUID.randomUUID();
+        CreditAccountId creditAccountId = CreditAccountId.of(id);
+        var summary = new CreditAccountSummary(
+                id, true, "1000.00", "500.00", "200.00", "300.00",
+                List.of(), 5L, UUID.randomUUID(), Instant.now()
+        );
+        when(repo.findById(creditAccountId)).thenReturn(Optional.of(summary));
 
-        when(eventStore.loadEvents(any(), any())).thenReturn(List.of(
-                new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 1,
-                        new CreditAccountOpened(creditAccountId, now), now, Map.of()),
-                new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 2,
-                        new CreditLimitAssigned(creditAccountId, Money.of("500.00"), now), now, Map.of())
-        ));
+        var output = useCase.execute(new GetCreditAccountInput(creditAccountId, null));
 
-        var input = new GetCreditAccountInput(creditAccountId);
-        var output = useCase.execute(input);
-
-        assertThat(output.account().creditAccountId()).isEqualTo(accountId.toString());
-        assertThat(output.account().opened()).isTrue();
-        assertThat(output.account().creditLimit()).isEqualTo("500.00");
-    }
-
-    @Test
-    void executeThrowsWhenAccountDoesNotExist() {
-        UUID accountId = UUID.fromString("00000000-0000-0000-0000-000000000404");
-        CreditAccountId creditAccountId = CreditAccountId.of(accountId);
-
-        when(eventStore.loadEvents(eq("CreditAccount"), eq(accountId.toString())))
-                .thenReturn(List.of());
-
-        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountInput(creditAccountId)))
-                .isInstanceOf(AccountNotFoundException.class)
-                .hasMessageContaining("Credit account not found");
-    }
-
-    @Test
-    void executeReturnsBalancesAndAuthorizationDetails() {
-        UUID accountId = UUID.fromString("00000000-0000-0000-0000-000000000777");
-        CreditAccountId creditAccountId = CreditAccountId.of(accountId);
-        AuthorizationId openAuthorizationId = AuthorizationId.of(UUID.fromString("00000000-0000-0000-0000-000000000001"));
-        AuthorizationId capturedAuthorizationId = AuthorizationId.of(UUID.fromString("00000000-0000-0000-0000-000000000002"));
-        AuthorizationId releasedAuthorizationId = AuthorizationId.of(UUID.fromString("00000000-0000-0000-0000-000000000003"));
-
-        when(eventStore.loadEvents(eq("CreditAccount"), eq(accountId.toString())))
-                .thenReturn(List.of(
-                        envelope(1, new CreditAccountOpened(creditAccountId, Instant.parse("2026-06-01T10:00:00Z")), accountId),
-                        envelope(2, new CreditLimitAssigned(creditAccountId, Money.of("500.00"), Instant.parse("2026-06-01T10:01:00Z")), accountId),
-                        envelope(3, new PurchaseAuthorized(creditAccountId, openAuthorizationId, Money.of("50.00"), "Store A", Instant.parse("2026-06-01T10:02:00Z")), accountId),
-                        envelope(4, new PurchaseAuthorized(creditAccountId, capturedAuthorizationId, Money.of("75.00"), "Store B", Instant.parse("2026-06-01T10:03:00Z")), accountId),
-                        envelope(5, new PurchaseCaptured(creditAccountId, capturedAuthorizationId, Money.of("75.00"), Instant.parse("2026-06-01T10:04:00Z")), accountId),
-                        envelope(6, new PaymentReceived(creditAccountId, Money.of("25.00"), Instant.parse("2026-06-01T10:05:00Z")), accountId),
-                        envelope(7, new PurchaseAuthorized(creditAccountId, releasedAuthorizationId, Money.of("30.00"), "Store C", Instant.parse("2026-06-01T10:06:00Z")), accountId),
-                        envelope(8, new PurchaseAuthorizationReleased(creditAccountId, releasedAuthorizationId, Money.of("30.00"), Instant.parse("2026-06-01T10:07:00Z")), accountId)
-                ));
-
-        CreditAccountOutput account = useCase.execute(new GetCreditAccountInput(creditAccountId)).account();
-
-        assertThat(account.creditAccountId()).isEqualTo(accountId.toString());
+        CreditAccountOutput account = output.account();
+        assertThat(account.creditAccountId()).isEqualTo(id.toString());
         assertThat(account.opened()).isTrue();
-        assertThat(account.creditLimit()).isEqualTo("500.00");
-        assertThat(account.outstandingBalance()).isEqualTo("50.00");
-        assertThat(account.authorizedAmount()).isEqualTo("50.00");
-        assertThat(account.availableLimit()).isEqualTo("400.00");
-        assertThat(account.authorizations())
-                .containsExactlyInAnyOrder(
-                        new PurchaseAuthorizationOutput(openAuthorizationId.value().toString(), "50.00", "OPEN", "Store A"),
-                        new PurchaseAuthorizationOutput(capturedAuthorizationId.value().toString(), "75.00", "CAPTURED", "Store B"),
-                        new PurchaseAuthorizationOutput(releasedAuthorizationId.value().toString(), "30.00", "RELEASED", "Store C")
-                );
+        assertThat(account.creditLimit()).isEqualTo("1000.00");
+        assertThat(account.outstandingBalance()).isEqualTo("500.00");
+        assertThat(account.authorizedAmount()).isEqualTo("200.00");
+        assertThat(account.availableLimit()).isEqualTo("300.00");
+        assertThat(account.projectedVersion()).isEqualTo(5L);
     }
 
-    private static EventEnvelope envelope(long version, CreditAccountEvent event, UUID accountId) {
-        return new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), version,
-                event, Instant.parse("2026-06-01T10:00:00Z"), Map.of());
+    @Test
+    void throwsSummaryNotFoundWhenMissingWithoutMinVersion() {
+        UUID id = UUID.randomUUID();
+        CreditAccountId creditAccountId = CreditAccountId.of(id);
+        when(repo.findById(creditAccountId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountInput(creditAccountId, null)))
+                .isInstanceOf(SummaryNotFoundException.class);
+    }
+
+    @Test
+    void throwsProjectionNotReadyWhenMissingWithMinVersion() {
+        UUID id = UUID.randomUUID();
+        CreditAccountId creditAccountId = CreditAccountId.of(id);
+        when(repo.findById(creditAccountId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountInput(creditAccountId, 5L)))
+                .isInstanceOf(ProjectionNotReadyException.class);
+    }
+
+    @Test
+    void throwsProjectionNotReadyWhenBehindMinVersion() {
+        UUID id = UUID.randomUUID();
+        CreditAccountId creditAccountId = CreditAccountId.of(id);
+        var summary = new CreditAccountSummary(
+                id, true, "1000.00", "500.00", "200.00", "300.00",
+                List.of(), 3L, UUID.randomUUID(), Instant.now()
+        );
+        when(repo.findById(creditAccountId)).thenReturn(Optional.of(summary));
+
+        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountInput(creditAccountId, 5L)))
+                .isInstanceOf(ProjectionNotReadyException.class);
+    }
+
+    @Test
+    void returnsAccountWhenMinVersionMet() {
+        UUID id = UUID.randomUUID();
+        CreditAccountId creditAccountId = CreditAccountId.of(id);
+        var summary = new CreditAccountSummary(
+                id, true, "1000.00", "500.00", "200.00", "300.00",
+                List.of(), 5L, UUID.randomUUID(), Instant.now()
+        );
+        when(repo.findById(creditAccountId)).thenReturn(Optional.of(summary));
+
+        var output = useCase.execute(new GetCreditAccountInput(creditAccountId, 5L));
+
+        assertThat(output.account().projectedVersion()).isEqualTo(5L);
     }
 }

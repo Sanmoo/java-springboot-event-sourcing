@@ -136,7 +136,8 @@ public class CreditAccountUseCaseSupport {
                 snapshot.creditLimit() != null
                         ? snapshot.availableLimit().amount().toPlainString()
                         : Money.zero().amount().toPlainString(),
-                authList
+                authList,
+                null
         );
     }
 
