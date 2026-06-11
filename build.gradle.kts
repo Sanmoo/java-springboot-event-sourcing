@@ -41,13 +41,8 @@ sourceSets {
             runtimeClasspath += sourceSets.main.get().output
             runtimeClasspath += sourceSets.test.get().output
         }
-        resources {
-            compileClasspath += sourceSets.test.get().output
-            runtimeClasspath += sourceSets.test.get().output
-        }
     }
 }
-
 
 
 dependencies {
@@ -89,6 +84,12 @@ configurations {
     }
     named("acceptanceTestRuntimeOnly") {
         extendsFrom(configurations.testRuntimeOnly.get())
+    }
+    named("acceptanceTestAnnotationProcessor") {
+        extendsFrom(configurations.testAnnotationProcessor.get())
+    }
+    named("acceptanceTestCompileOnly") {
+        extendsFrom(configurations.testCompileOnly.get())
     }
 }
 
