@@ -31,6 +31,7 @@ adapter/out/postgres/  ← Event store, idempotency store
 - **Idempotent commands** via `Idempotency-Key` header and idempotency store
 - **No read models** in MVP — GET rehydrates aggregate from event store
 - **Outbox pattern** planned for future projections/messaging (not yet implemented)
+- **Aggregate-applied domain events**: aggregate command methods validate invariants, create domain events, apply them to aggregate state, and return the already-applied events to the application layer for persistence. This keeps events explicit without requiring a pending-events list.
 
 ## REST Endpoints
 
