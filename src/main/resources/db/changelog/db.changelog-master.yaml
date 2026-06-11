@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/002-create-idempotency-records.yaml
   - include:
       file: db/changelog/003-refine-idempotency-records.yaml
+  - include:
+      file: db/changelog/004-create-outbox-events.yaml
