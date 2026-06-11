@@ -26,7 +26,7 @@ public final class CreditAccount {
 
     public static CreditAccount rehydrate(CreditAccountId id, List<CreditAccountEvent> history) {
         CreditAccount account = new CreditAccount(id);
-        history.forEach(event -> { account.apply(event); account.version++; });
+        history.forEach(account::applyHistorical);
         return account;
     }
 
@@ -77,10 +77,6 @@ public final class CreditAccount {
         return recordThat(new PaymentReceived(id, amount, occurredAt));
     }
 
-    public void applyAll(List<CreditAccountEvent> events) {
-        events.forEach(event -> { apply(event); version++; });
-    }
-
     public CreditAccountSnapshot snapshot() {
         return new CreditAccountSnapshot(id, opened, creditLimit, outstandingBalance, authorizedAmount, availableLimit(), Map.copyOf(authorizations));
     }
@@ -103,6 +99,11 @@ public final class CreditAccount {
         apply(event);
         version++;
         return List.of(event);
+    }
+
+    private void applyHistorical(CreditAccountEvent event) {
+        apply(event);
+        version++;
     }
 
     private void ensureOpened() { if (!opened) { throw new AccountNotFoundException("credit account not found"); } }

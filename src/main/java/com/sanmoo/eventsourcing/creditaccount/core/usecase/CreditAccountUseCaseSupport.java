@@ -93,9 +93,8 @@ public class CreditAccountUseCaseSupport {
         List<CreditAccountEvent> history = loadHistory(aggregateId);
         CreditAccount account = CreditAccount.rehydrate(creditAccountId, history);
 
-        List<CreditAccountEvent> newEvents = executor.execute(account);
         long expectedVersion = account.version();
-        account.applyAll(newEvents);
+        List<CreditAccountEvent> newEvents = executor.execute(account);
 
         Map<String, String> metadata = Map.of(
                 "idempotencyKey", idempotencyKey,
