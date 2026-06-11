@@ -36,6 +36,18 @@ sourceSets {
     }
 }
 
+configurations {
+    create("acceptanceTestImplementation") {
+        extendsFrom(configurations.testImplementation.get())
+    }
+    create("acceptanceTestRuntimeOnly") {
+        extendsFrom(configurations.testRuntimeOnly.get())
+    }
+    create("acceptanceTestRuntimeClasspath") {
+        extendsFrom(configurations.named("acceptanceTestImplementation").get(), configurations.named("acceptanceTestRuntimeOnly").get())
+    }
+}
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-liquibase")
@@ -58,6 +70,9 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     errorprone("com.google.errorprone:error_prone_core:2.38.0")
     add("qualityTestImplementation", "com.tngtech.archunit:archunit-junit5:1.4.2")
+    add("acceptanceTestImplementation", "io.cucumber:cucumber-java:7.20.1")
+    add("acceptanceTestImplementation", "io.cucumber:cucumber-junit-platform-engine:7.20.1")
+    add("acceptanceTestImplementation", "io.cucumber:cucumber-spring:7.20.1")
 }
 
 configurations {
