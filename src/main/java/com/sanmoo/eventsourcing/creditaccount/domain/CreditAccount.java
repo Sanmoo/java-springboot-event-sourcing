@@ -74,7 +74,7 @@ public final class CreditAccount {
         ensureOpened();
         if (!amount.isGreaterThan(Money.zero())) { throw new InvalidMoneyException("payment amount must be positive"); }
         if (amount.isGreaterThan(outstandingBalance)) { throw new PaymentExceedsOutstandingBalanceException("payment exceeds outstanding balance"); }
-        return List.of(new PaymentReceived(id, amount, occurredAt));
+        return recordThat(new PaymentReceived(id, amount, occurredAt));
     }
 
     public void applyAll(List<CreditAccountEvent> events) {

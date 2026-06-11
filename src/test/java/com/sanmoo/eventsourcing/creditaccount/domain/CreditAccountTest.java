@@ -331,6 +331,8 @@ class CreditAccountTest {
         var events = account.receivePayment(Money.of("25.00"), Instant.parse("2026-06-01T10:04:00Z"));
 
         assertThat(events).containsExactly(new PaymentReceived(accountId, Money.of("25.00"), Instant.parse("2026-06-01T10:04:00Z")));
+        assertThat(account.snapshot().outstandingBalance()).isEqualTo(Money.of("25.00"));
+        assertThat(account.version()).isEqualTo(5L);
     }
 
     @Test
