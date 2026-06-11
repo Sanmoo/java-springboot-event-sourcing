@@ -32,7 +32,7 @@ public final class CreditAccount {
 
     public List<CreditAccountEvent> open(Instant occurredAt) {
         if (opened) { throw new AccountAlreadyExistsException("credit account already exists"); }
-        return List.of(new CreditAccountOpened(id, occurredAt));
+        return recordThat(new CreditAccountOpened(id, occurredAt));
     }
 
     public List<CreditAccountEvent> assignCreditLimit(Money limit, Instant occurredAt) {
@@ -97,6 +97,12 @@ public final class CreditAccount {
         if (authorization == null) { throw new AuthorizationNotFoundException("authorization not found"); }
         if (authorization.status() != PurchaseAuthorizationStatus.OPEN) { throw new AuthorizationNotOpenException("authorization is not open"); }
         return authorization;
+    }
+
+    private List<CreditAccountEvent> recordThat(CreditAccountEvent event) {
+        apply(event);
+        version++;
+        return List.of(event);
     }
 
     private void ensureOpened() { if (!opened) { throw new AccountNotFoundException("credit account not found"); } }
