@@ -64,6 +64,14 @@ class AuthorizePurchaseUseCaseTest {
         var input = new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store");
         var output = useCase.execute(input);
 
+        verify(eventStore).appendEvents(
+                eq("CreditAccount"),
+                eq(accountId.toString()),
+                eq(2L),
+                anyList(),
+                anyMap()
+        );
+
         assertThat(output.account().authorizedAmount()).isEqualTo("100.00");
         assertThat(output.authorizationId()).isEqualTo(authorizationId.value().toString());
         assertThat(output.account().authorizations())
