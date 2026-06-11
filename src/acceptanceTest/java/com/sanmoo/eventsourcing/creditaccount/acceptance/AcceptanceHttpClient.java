@@ -1,7 +1,8 @@
 package com.sanmoo.eventsourcing.creditaccount.acceptance;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -9,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -20,24 +22,38 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Component
 public class AcceptanceHttpClient {
 
-    private final TestRestTemplate rest;
-    private final String baseUrl;
-    private final Duration pollingInterval;
-    private final Duration pollingTimeout;
+    @Autowired
+    private Environment environment;
 
-    public AcceptanceHttpClient(
-            TestRestTemplate rest,
-            @Value("${local.server.port}") int port,
-            @Value("${acceptance.polling.interval-ms:150}") long pollingIntervalMs,
-            @Value("${acceptance.polling.timeout-ms:5000}") long pollingTimeoutMs
-    ) {
-        this.rest = rest;
-        this.baseUrl = "http://localhost:" + port + "/credit-accounts";
-        this.pollingInterval = Duration.ofMillis(pollingIntervalMs);
-        this.pollingTimeout = Duration.ofMillis(pollingTimeoutMs);
+    @Value("${acceptance.polling.interval-ms:150}")
+    private long pollingIntervalMs;
+
+    @Value("${acceptance.polling.timeout-ms:5000}")
+    private long pollingTimeoutMs;
+
+    private RestTemplate rest;
+    private String baseUrl;
+    private Duration pollingInterval;
+    private Duration pollingTimeout;
+    private volatile boolean initialized;
+
+    private void ensureInitialized() {
+        if (!initialized) {
+            synchronized (this) {
+                if (!initialized) {
+                    this.rest = new RestTemplate();
+                    int port = environment.getRequiredProperty("local.server.port", Integer.class);
+                    this.baseUrl = "http://localhost:" + port + "/credit-accounts";
+                    this.pollingInterval = Duration.ofMillis(pollingIntervalMs);
+                    this.pollingTimeout = Duration.ofMillis(pollingTimeoutMs);
+                    this.initialized = true;
+                }
+            }
+        }
     }
 
     public Map<String, Object> openAccount() {
+        ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
         ResponseEntity<Map> response = rest.exchange(
                 baseUrl,
@@ -50,6 +66,7 @@ public class AcceptanceHttpClient {
     }
 
     public Map<String, Object> assignCreditLimit(UUID accountId, String limit) {
+        ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
         ResponseEntity<Map> response = rest.exchange(
                 baseUrl + "/" + accountId + "/credit-limit",
@@ -62,6 +79,7 @@ public class AcceptanceHttpClient {
     }
 
     public Map<String, Object> authorizePurchase(UUID accountId, String amount, String merchantName) {
+        ensureInitialized();
         UUID authorizationId = UUID.randomUUID();
         HttpHeaders headers = headersWithIdempotencyKey();
         ResponseEntity<Map> response = rest.exchange(
@@ -80,6 +98,7 @@ public class AcceptanceHttpClient {
     }
 
     public Map<String, Object> capturePurchase(UUID accountId, UUID authorizationId) {
+        ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
         ResponseEntity<Map> response = rest.exchange(
                 baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
@@ -92,6 +111,7 @@ public class AcceptanceHttpClient {
     }
 
     public Map<String, Object> receivePayment(UUID accountId, String amount) {
+        ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
         ResponseEntity<Map> response = rest.exchange(
                 baseUrl + "/" + accountId + "/payments",
@@ -104,6 +124,7 @@ public class AcceptanceHttpClient {
     }
 
     public Map<String, Object> getSummary(UUID accountId, Long minVersion) {
+        ensureInitialized();
         String url = baseUrl + "/" + accountId;
         if (minVersion != null) {
             url = url + "?minVersion=" + minVersion;
@@ -119,6 +140,7 @@ public class AcceptanceHttpClient {
     }
 
     public Map<String, Object> awaitProjectedSummary(UUID accountId, long minimumVersion) {
+        ensureInitialized();
         Instant deadline = Instant.now().plus(pollingTimeout);
         Map<String, Object> latest = null;
         while (Instant.now().isBefore(deadline)) {

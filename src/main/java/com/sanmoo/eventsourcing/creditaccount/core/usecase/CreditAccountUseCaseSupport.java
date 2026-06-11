@@ -86,7 +86,7 @@ public class CreditAccountUseCaseSupport {
             throw new com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotFoundException(
                     "Credit account not found: " + aggregateId);
         }
-        return buildOutput(account);
+        return buildOutput(account, account.version());
     }
 
     private ExecutionResult execute(String aggregateId, CreditAccountId creditAccountId, CommandExecutor executor, String idempotencyKey, String commandType, String requestHash) {
@@ -104,7 +104,7 @@ public class CreditAccountUseCaseSupport {
         AppendResult appendResult = eventStore.appendEvents(
                 AGGREGATE_TYPE, aggregateId, expectedVersion, newEvents, metadata);
 
-        CreditAccountOutput output = buildOutput(account);
+        CreditAccountOutput output = buildOutput(account, appendResult.newAggregateVersion());
         return new ExecutionResult(output, appendResult.newAggregateVersion(), false);
     }
 
@@ -115,7 +115,7 @@ public class CreditAccountUseCaseSupport {
                 .collect(Collectors.toList());
     }
 
-    private CreditAccountOutput buildOutput(CreditAccount account) {
+    private CreditAccountOutput buildOutput(CreditAccount account, Long projectedVersion) {
         CreditAccountSnapshot snapshot = account.snapshot();
 
         List<PurchaseAuthorizationOutput> authList = snapshot.authorizations().values().stream()
@@ -137,7 +137,7 @@ public class CreditAccountUseCaseSupport {
                         ? snapshot.availableLimit().amount().toPlainString()
                         : Money.zero().amount().toPlainString(),
                 authList,
-                null
+                projectedVersion
         );
     }
 

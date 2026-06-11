@@ -8,6 +8,7 @@ import io.cucumber.java.pt.Então;
 import io.cucumber.java.pt.Quando;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -62,6 +63,14 @@ public class CreditAccountStepDefinitions {
         context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
     }
 
+    private static final Map<String, String> FIELD_MAPPING = new HashMap<>();
+    static {
+        FIELD_MAPPING.put("limite de crédito", "creditLimit");
+        FIELD_MAPPING.put("valor autorizado", "authorizedAmount");
+        FIELD_MAPPING.put("limite disponível", "availableLimit");
+        FIELD_MAPPING.put("saldo em aberto", "outstandingBalance");
+    }
+
     @Então("eventualmente o resumo da conta deve mostrar:")
     public void resumirConta(DataTable dataTable) {
         Map<String, String> expected = dataTable.asMap(String.class, String.class);
@@ -70,9 +79,14 @@ public class CreditAccountStepDefinitions {
                 context.getLastProjectedVersion()
         );
 
-        assertThat((String) summary.get("creditLimit")).isEqualTo(expected.get("limite de crédito"));
-        assertThat((String) summary.get("authorizedAmount")).isEqualTo(expected.get("valor autorizado"));
-        assertThat((String) summary.get("availableLimit")).isEqualTo(expected.get("limite disponível"));
-        assertThat((String) summary.get("outstandingBalance")).isEqualTo(expected.get("saldo em aberto"));
+        for (Map.Entry<String, String> entry : expected.entrySet()) {
+            String fieldPath = FIELD_MAPPING.get(entry.getKey());
+            if (fieldPath == null) {
+                throw new IllegalArgumentException("Unknown field: " + entry.getKey());
+            }
+            assertThat((String) summary.get(fieldPath))
+                    .as(entry.getKey())
+                    .isEqualTo(entry.getValue());
+        }
     }
 }

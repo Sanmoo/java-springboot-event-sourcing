@@ -70,6 +70,7 @@ dependencies {
     add("acceptanceTestImplementation", "io.cucumber:cucumber-java:7.20.1")
     add("acceptanceTestImplementation", "io.cucumber:cucumber-junit-platform-engine:7.20.1")
     add("acceptanceTestImplementation", "io.cucumber:cucumber-spring:7.20.1")
+    add("acceptanceTestImplementation", "org.junit.platform:junit-platform-suite")
 }
 
 configurations {
