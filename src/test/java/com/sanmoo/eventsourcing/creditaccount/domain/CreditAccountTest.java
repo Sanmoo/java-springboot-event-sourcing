@@ -58,6 +58,8 @@ class CreditAccountTest {
         var events = account.open(Instant.parse("2026-06-01T10:00:00Z"));
 
         assertThat(events).containsExactly(new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")));
+        assertThat(account.snapshot().opened()).isTrue();
+        assertThat(account.version()).isEqualTo(1L);
     }
 
     @Test
