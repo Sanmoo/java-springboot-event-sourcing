@@ -104,6 +104,9 @@ class CreditAccountTest {
         var events = account.capturePurchase(authorizationId, Instant.parse("2026-06-01T10:03:00Z"));
 
         assertThat(events).containsExactly(new PurchaseCaptured(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:03:00Z")));
+        assertThat(account.snapshot().outstandingBalance()).isEqualTo(Money.of("25.00"));
+        assertThat(account.snapshot().authorizedAmount()).isEqualTo(Money.zero());
+        assertThat(account.version()).isEqualTo(4L);
     }
 
     @Test

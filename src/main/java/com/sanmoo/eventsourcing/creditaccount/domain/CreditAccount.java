@@ -61,7 +61,7 @@ public final class CreditAccount {
     public List<CreditAccountEvent> capturePurchase(AuthorizationId authorizationId, Instant occurredAt) {
         ensureOpened();
         PurchaseAuthorization authorization = openAuthorization(authorizationId);
-        return List.of(new PurchaseCaptured(id, authorizationId, authorization.amount(), occurredAt));
+        return recordThat(new PurchaseCaptured(id, authorizationId, authorization.amount(), occurredAt));
     }
 
     public List<CreditAccountEvent> releasePurchaseAuthorization(AuthorizationId authorizationId, Instant occurredAt) {
