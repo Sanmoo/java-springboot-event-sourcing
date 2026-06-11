@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
-import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
 import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
@@ -47,7 +47,7 @@ class JdbcEventStoreAdapterIT {
     }
 
     @Autowired
-    private EventStorePort eventStorePort;
+    private EventStore eventStorePort;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

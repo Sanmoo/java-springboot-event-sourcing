@@ -9,8 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
-import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import com.sanmoo.eventsourcing.creditaccount.domain.CreditAccount;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
@@ -36,8 +36,8 @@ public class CreditAccountUseCaseSupport {
 
     private static final String AGGREGATE_TYPE = "CreditAccount";
 
-    private final EventStorePort eventStore;
-    private final IdempotencyPort idempotencyPort;
+    private final EventStore eventStore;
+    private final IdempotencyRepository idempotencyPort;
     private final ObjectMapper objectMapper;
 
     @Transactional

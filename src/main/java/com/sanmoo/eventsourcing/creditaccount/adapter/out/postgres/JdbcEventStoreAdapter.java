@@ -3,7 +3,7 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
-import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
 import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
 import java.sql.ResultSet;
@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
-public class JdbcEventStoreAdapter implements EventStorePort {
+public class JdbcEventStoreAdapter implements EventStore {
 
     private static final String LOAD_EVENTS_SQL = """
             SELECT event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload, metadata, occurred_at

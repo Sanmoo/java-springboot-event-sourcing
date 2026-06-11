@@ -4,8 +4,8 @@ import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.AuthorizePurchase
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.PurchaseAuthorizationOutput;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
-import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
@@ -27,16 +27,16 @@ import static org.mockito.Mockito.*;
 
 class AuthorizePurchaseUseCaseTest {
 
-    private EventStorePort eventStore;
-    private IdempotencyPort idempotencyPort;
+    private EventStore eventStore;
+    private IdempotencyRepository idempotencyPort;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
     private AuthorizePurchaseUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        eventStore = mock(EventStorePort.class);
-        idempotencyPort = mock(IdempotencyPort.class);
+        eventStore = mock(EventStore.class);
+        idempotencyPort = mock(IdempotencyRepository.class);
         objectMapper = new ObjectMapper();
         support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
         useCase = new AuthorizePurchaseUseCase(support);

@@ -2,7 +2,7 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,7 +26,7 @@ import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
 class JdbcIdempotencyAdapterIT {
 
     @Autowired
-    private IdempotencyPort idempotencyPort;
+    private IdempotencyRepository idempotencyPort;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

@@ -3,8 +3,8 @@ package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.OpenCreditAccountInput;
 
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
-import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import tools.jackson.databind.ObjectMapper;
@@ -21,8 +21,8 @@ import static org.mockito.Mockito.*;
 
 class OpenCreditAccountUseCaseTest {
 
-    private EventStorePort eventStore;
-    private IdempotencyPort idempotencyPort;
+    private EventStore eventStore;
+    private IdempotencyRepository idempotencyPort;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
     private UniqueIdGenerator uniqueIdGenerator;
@@ -30,8 +30,8 @@ class OpenCreditAccountUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        eventStore = mock(EventStorePort.class);
-        idempotencyPort = mock(IdempotencyPort.class);
+        eventStore = mock(EventStore.class);
+        idempotencyPort = mock(IdempotencyRepository.class);
         objectMapper = new ObjectMapper();
         support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
         uniqueIdGenerator = () -> UUID.fromString("018f5f4b-6a3c-7000-8000-000000000001");

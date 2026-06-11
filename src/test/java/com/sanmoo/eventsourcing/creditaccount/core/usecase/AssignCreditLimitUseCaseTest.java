@@ -5,8 +5,8 @@ import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.AssignCreditLimit
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
-import com.sanmoo.eventsourcing.creditaccount.core.port.EventStorePort;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
@@ -29,16 +29,16 @@ import static org.mockito.Mockito.*;
 
 class AssignCreditLimitUseCaseTest {
 
-    private EventStorePort eventStore;
-    private IdempotencyPort idempotencyPort;
+    private EventStore eventStore;
+    private IdempotencyRepository idempotencyPort;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
     private AssignCreditLimitUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        eventStore = mock(EventStorePort.class);
-        idempotencyPort = mock(IdempotencyPort.class);
+        eventStore = mock(EventStore.class);
+        idempotencyPort = mock(IdempotencyRepository.class);
         objectMapper = new ObjectMapper();
         support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
         useCase = new AssignCreditLimitUseCase(support);

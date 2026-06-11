@@ -1,7 +1,7 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyPort;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class JdbcIdempotencyAdapter implements IdempotencyPort {
+public class JdbcIdempotencyAdapter implements IdempotencyRepository {
 
     private static final String SET_LOCK_TIMEOUT_SQL = "SET LOCAL lock_timeout = '5s'";
 
