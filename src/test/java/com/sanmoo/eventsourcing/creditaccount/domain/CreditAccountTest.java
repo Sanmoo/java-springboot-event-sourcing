@@ -74,6 +74,9 @@ class CreditAccountTest {
         var events = account.authorizePurchase(authorizationId, Money.of("25.00"), "Book Store", Instant.parse("2026-06-01T10:02:00Z"));
 
         assertThat(events).containsExactly(new PurchaseAuthorized(accountId, authorizationId, Money.of("25.00"), "Book Store", Instant.parse("2026-06-01T10:02:00Z")));
+        assertThat(account.snapshot().authorizedAmount()).isEqualTo(Money.of("25.00"));
+        assertThat(account.snapshot().authorizations()).containsKey(authorizationId);
+        assertThat(account.version()).isEqualTo(3L);
     }
 
     @Test

@@ -55,7 +55,7 @@ public final class CreditAccount {
         if (authorizations.containsKey(authorizationId)) { throw new AuthorizationAlreadyExistsException("authorization already exists"); }
         if (!amount.isGreaterThan(Money.zero())) { throw new InvalidMoneyException("purchase amount must be positive"); }
         if (amount.isGreaterThan(availableLimit())) { throw new InsufficientAvailableLimitException("insufficient available limit"); }
-        return List.of(new PurchaseAuthorized(id, authorizationId, amount, merchantName, occurredAt));
+        return recordThat(new PurchaseAuthorized(id, authorizationId, amount, merchantName, occurredAt));
     }
 
     public List<CreditAccountEvent> capturePurchase(AuthorizationId authorizationId, Instant occurredAt) {
