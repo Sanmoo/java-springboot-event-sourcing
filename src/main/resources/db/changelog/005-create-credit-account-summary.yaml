@@ -1,0 +1,57 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-credit-account-summary
+      author: sanmoo
+      changes:
+        - createTable:
+            tableName: credit_account_summary
+            columns:
+              - column:
+                  name: credit_account_id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: opened
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: credit_limit
+                  type: NUMERIC(19,2)
+              - column:
+                  name: outstanding_balance
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: authorized_amount
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: available_limit
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: authorizations
+                  type: JSONB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: projected_version
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_event_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false

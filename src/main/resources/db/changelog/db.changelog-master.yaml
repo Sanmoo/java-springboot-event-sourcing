@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/003-refine-idempotency-records.yaml
   - include:
       file: db/changelog/004-create-outbox-events.yaml
+  - include:
+      file: db/changelog/005-create-credit-account-summary.yaml
