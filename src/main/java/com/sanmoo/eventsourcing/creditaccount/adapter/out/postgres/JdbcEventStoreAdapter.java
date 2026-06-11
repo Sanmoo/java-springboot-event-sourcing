@@ -32,7 +32,13 @@ public class JdbcEventStoreAdapter implements EventStore {
             """;
 
     private static final String INSERT_EVENT_SQL = """
-            INSERT INTO event_store (event_id, aggregate_id, aggregate_type, aggregate_version, event_type, payload, metadata, occurred_at)
+            INSERT INTO event_store (event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload, metadata, occurred_at)
+            VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?)
+            """;
+
+    private static final String INSERT_OUTBOX_SQL = """
+            INSERT INTO outbox_events
+              (event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload, metadata, occurred_at)
             VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?)
             """;
 
@@ -60,20 +66,20 @@ public class JdbcEventStoreAdapter implements EventStore {
                 String metadataJson = serializeMetadata(metadata);
                 Instant occurredAt = event.occurredAt();
 
-                jdbcTemplate.update(INSERT_EVENT_SQL,
-                        eventId,
-                        aggregateId,
-                        aggregateType,
-                        version,
-                        eventType,
-                        payload,
-                        metadataJson,
-                        Timestamp.from(occurredAt));
+                insertEventRow(INSERT_EVENT_SQL, eventId, aggregateType, aggregateId, version, eventType, payload, metadataJson, occurredAt);
+                insertEventRow(INSERT_OUTBOX_SQL, eventId, aggregateType, aggregateId, version, eventType, payload, metadataJson, occurredAt);
             }
             return new AppendResult(version);
         } catch (DataIntegrityViolationException e) {
             throw new ConcurrencyConflictException(aggregateType, aggregateId, expectedVersion, e);
         }
+    }
+
+    private void insertEventRow(String sql, UUID eventId, String aggregateType,
+                                String aggregateId, long version, String eventType,
+                                String payload, String metadataJson, Instant occurredAt) {
+        jdbcTemplate.update(sql, eventId, aggregateType, aggregateId, version,
+                            eventType, payload, metadataJson, Timestamp.from(occurredAt));
     }
 
     private String serializeMetadata(Map<String, String> metadata) {

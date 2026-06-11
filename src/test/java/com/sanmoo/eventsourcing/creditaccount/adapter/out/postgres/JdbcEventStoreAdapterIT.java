@@ -47,13 +47,14 @@ class JdbcEventStoreAdapterIT {
     }
 
     @Autowired
-    private EventStore eventStorePort;
+    private EventStore eventStore;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void resetTestState() {
+        jdbcTemplate.update("DELETE FROM outbox_events");
         jdbcTemplate.update("DELETE FROM event_store");
         RecordingUniqueIdGenerator.clear();
     }
@@ -73,13 +74,13 @@ class JdbcEventStoreAdapterIT {
                 "commandType", "OpenCreditAccount",
                 "requestHash", "hash-1"
         );
-        AppendResult result = eventStorePort.appendEvents(
+        AppendResult result = eventStore.appendEvents(
                 aggregateType, aggregateId, 0, List.of(openedEvent), metadata);
 
         // then
         assertThat(result.newAggregateVersion()).isEqualTo(1);
 
-        List<EventEnvelope> envelopes = eventStorePort.loadEvents(aggregateType, aggregateId);
+        List<EventEnvelope> envelopes = eventStore.loadEvents(aggregateType, aggregateId);
         assertThat(envelopes).hasSize(1);
         List<UUID> generatedIds = RecordingUniqueIdGenerator.generatedIds();
         assertThat(generatedIds).hasSize(1);
@@ -143,7 +144,7 @@ class JdbcEventStoreAdapterIT {
         var creditAccountId = CreditAccountId.of(UUID.randomUUID());
 
         // when
-        eventStorePort.appendEvents(
+        eventStore.appendEvents(
                 aggregateType, aggregateId, 0,
                 List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
                 Map.of());
@@ -155,7 +156,7 @@ class JdbcEventStoreAdapterIT {
                 aggregateType,
                 aggregateId);
         assertThat(metadata).isEqualTo("{}");
-        assertThat(eventStorePort.loadEvents(aggregateType, aggregateId).getFirst().metadata()).isEmpty();
+        assertThat(eventStore.loadEvents(aggregateType, aggregateId).getFirst().metadata()).isEmpty();
     }
 
     @Test
@@ -165,19 +166,19 @@ class JdbcEventStoreAdapterIT {
         var creditAccountId = CreditAccountId.of(UUID.randomUUID());
 
         // when
-        eventStorePort.appendEvents(
+        eventStore.appendEvents(
                 "CreditAccount", aggregateId, 0,
                 List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
                 Map.of());
-        AppendResult result = eventStorePort.appendEvents(
+        AppendResult result = eventStore.appendEvents(
                 "AnotherAggregate", aggregateId, 0,
                 List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
                 Map.of());
 
         // then
         assertThat(result.newAggregateVersion()).isEqualTo(1);
-        assertThat(eventStorePort.loadEvents("CreditAccount", aggregateId)).hasSize(1);
-        assertThat(eventStorePort.loadEvents("AnotherAggregate", aggregateId)).hasSize(1);
+        assertThat(eventStore.loadEvents("CreditAccount", aggregateId)).hasSize(1);
+        assertThat(eventStore.loadEvents("AnotherAggregate", aggregateId)).hasSize(1);
     }
 
     @Test
@@ -190,17 +191,44 @@ class JdbcEventStoreAdapterIT {
         var openedEvent = new CreditAccountOpened(creditAccountId, occurredAt);
 
         // when - first append succeeds
-        eventStorePort.appendEvents(
+        eventStore.appendEvents(
                 aggregateType, aggregateId, 0, List.of(openedEvent), Map.of());
 
         // then - second append with same version throws
         assertThatThrownBy(() ->
-                eventStorePort.appendEvents(
+                eventStore.appendEvents(
                         aggregateType, aggregateId, 0,
                         List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
                         Map.of())
         )
                 .isInstanceOf(ConcurrencyConflictException.class);
+    }
+
+    @Test
+    void appendEventsPersistsEventsAndOutboxRows() {
+        // given
+        var aggregateType = "CreditAccount";
+        var aggregateId = UUID.randomUUID().toString();
+        var creditAccountId = CreditAccountId.of(UUID.randomUUID());
+        Instant now = Instant.parse("2025-01-01T00:00:00Z");
+        CreditAccountOpened opened = new CreditAccountOpened(creditAccountId, now);
+
+        // when
+        AppendResult result = eventStore.appendEvents(
+                aggregateType, aggregateId, 0, List.of(opened), Map.of());
+
+        // then
+        assertThat(result.newAggregateVersion()).isEqualTo(1);
+
+        Integer eventStoreCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_store WHERE aggregate_id = ?",
+                Integer.class, aggregateId);
+        assertThat(eventStoreCount).isEqualTo(1);
+
+        Integer outboxCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id = ?",
+                Integer.class, aggregateId);
+        assertThat(outboxCount).isEqualTo(1);
     }
 
     @Test
@@ -211,7 +239,7 @@ class JdbcEventStoreAdapterIT {
         var creditAccountId = CreditAccountId.of(UUID.randomUUID());
 
         // when
-        eventStorePort.appendEvents(
+        eventStore.appendEvents(
                 aggregateType, aggregateId, 0,
                 List.of(new CreditAccountOpened(creditAccountId, Instant.now())),
                 Map.of());
