@@ -22,7 +22,7 @@ import static org.mockito.Mockito.*;
 class OpenCreditAccountUseCaseTest {
 
     private EventStore eventStore;
-    private IdempotencyRepository idempotencyPort;
+    private IdempotencyRepository idempotencyRepository;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
     private UniqueIdGenerator uniqueIdGenerator;
@@ -31,17 +31,17 @@ class OpenCreditAccountUseCaseTest {
     @BeforeEach
     void setUp() {
         eventStore = mock(EventStore.class);
-        idempotencyPort = mock(IdempotencyRepository.class);
+        idempotencyRepository = mock(IdempotencyRepository.class);
         objectMapper = new ObjectMapper();
-        support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
+        support = new CreditAccountUseCaseSupport(eventStore, idempotencyRepository, objectMapper);
         uniqueIdGenerator = () -> UUID.fromString("018f5f4b-6a3c-7000-8000-000000000001");
         useCase = new OpenCreditAccountUseCase(support, uniqueIdGenerator);
     }
 
     @Test
     void executeAppendsCreditAccountOpenedAtExpectedVersionZero() {
-        doNothing().when(idempotencyPort).lockKey(anyString());
-        when(idempotencyPort.findByKey(anyString())).thenReturn(java.util.Optional.empty());
+        doNothing().when(idempotencyRepository).lockKey(anyString());
+        when(idempotencyRepository.findByKey(anyString())).thenReturn(java.util.Optional.empty());
         when(eventStore.loadEvents(any(), any())).thenReturn(List.of());
         when(eventStore.appendEvents(any(), any(), anyLong(), anyList(), anyMap()))
                 .thenReturn(new AppendResult(1L));
@@ -76,8 +76,8 @@ class OpenCreditAccountUseCaseTest {
                 "responseData", previousData
         ));
 
-        doNothing().when(idempotencyPort).lockKey(anyString());
-        when(idempotencyPort.findByKey(eq("key-2"))).thenReturn(java.util.Optional.of(
+        doNothing().when(idempotencyRepository).lockKey(anyString());
+        when(idempotencyRepository.findByKey(eq("key-2"))).thenReturn(java.util.Optional.of(
                 new IdempotencyRecord(
                         "key-2",
                         "OpenCreditAccount",

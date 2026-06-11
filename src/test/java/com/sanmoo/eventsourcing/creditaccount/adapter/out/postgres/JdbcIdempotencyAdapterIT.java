@@ -26,7 +26,7 @@ import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
 class JdbcIdempotencyAdapterIT {
 
     @Autowired
-    private IdempotencyRepository idempotencyPort;
+    private IdempotencyRepository idempotencyRepository;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -41,7 +41,7 @@ class JdbcIdempotencyAdapterIT {
 
     @Test
     void missingKeyReturnsEmptyResult() {
-        Optional<IdempotencyRecord> result = idempotencyPort.findByKey(UUID.randomUUID().toString());
+        Optional<IdempotencyRecord> result = idempotencyRepository.findByKey(UUID.randomUUID().toString());
 
         assertThat(result).isEmpty();
     }
@@ -54,9 +54,9 @@ class JdbcIdempotencyAdapterIT {
         var requestHash = "hash-456";
         var responsePayload = "{\"status\":\"ok\"}";
 
-        idempotencyPort.saveResult(key, commandType, aggregateId, requestHash, responsePayload, 7L);
+        idempotencyRepository.saveResult(key, commandType, aggregateId, requestHash, responsePayload, 7L);
 
-        Optional<IdempotencyRecord> loaded = idempotencyPort.findByKey(key);
+        Optional<IdempotencyRecord> loaded = idempotencyRepository.findByKey(key);
         assertThat(loaded).isPresent();
         assertThat(loaded.get().idempotencyKey()).isEqualTo(key);
         assertThat(loaded.get().commandType()).isEqualTo(commandType);
@@ -69,7 +69,7 @@ class JdbcIdempotencyAdapterIT {
     @Test
     void findByKeyExposesStoredHashForCoreConflictDecision() {
         var key = UUID.randomUUID().toString();
-        idempotencyPort.saveResult(
+        idempotencyRepository.saveResult(
                 key,
                 "CreateAccount",
                 UUID.randomUUID().toString(),
@@ -78,7 +78,7 @@ class JdbcIdempotencyAdapterIT {
                 1L
         );
 
-        Optional<IdempotencyRecord> loaded = idempotencyPort.findByKey(key);
+        Optional<IdempotencyRecord> loaded = idempotencyRepository.findByKey(key);
 
         assertThat(loaded).isPresent();
         assertThat(loaded.get().requestHash()).isEqualTo("original-hash");
@@ -94,7 +94,7 @@ class JdbcIdempotencyAdapterIT {
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
-                idempotencyPort.lockKey(key);
+                idempotencyRepository.lockKey(key);
                 firstHasLock.countDown();
                 try {
                     assertThat(releaseFirst.await(10, TimeUnit.SECONDS)).isTrue();
@@ -107,7 +107,7 @@ class JdbcIdempotencyAdapterIT {
             assertThat(firstHasLock.await(10, TimeUnit.SECONDS)).isTrue();
 
             var second = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
-                idempotencyPort.lockKey(key);
+                idempotencyRepository.lockKey(key);
                 secondAcquiredLock.set(true);
             }));
 
@@ -130,7 +130,7 @@ class JdbcIdempotencyAdapterIT {
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
-                idempotencyPort.lockKey("key-a-" + UUID.randomUUID());
+                idempotencyRepository.lockKey("key-a-" + UUID.randomUUID());
                 firstHasLock.countDown();
                 try {
                     assertThat(releaseFirst.await(10, TimeUnit.SECONDS)).isTrue();
@@ -143,7 +143,7 @@ class JdbcIdempotencyAdapterIT {
             assertThat(firstHasLock.await(10, TimeUnit.SECONDS)).isTrue();
 
             var second = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
-                idempotencyPort.lockKey("key-b-" + UUID.randomUUID());
+                idempotencyRepository.lockKey("key-b-" + UUID.randomUUID());
                 secondAcquiredLock.countDown();
             }));
 

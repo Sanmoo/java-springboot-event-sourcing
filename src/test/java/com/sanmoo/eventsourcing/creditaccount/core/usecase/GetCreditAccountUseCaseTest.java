@@ -35,7 +35,7 @@ import static org.mockito.Mockito.*;
 class GetCreditAccountUseCaseTest {
 
     private EventStore eventStore;
-    private IdempotencyRepository idempotencyPort;
+    private IdempotencyRepository idempotencyRepository;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
     private GetCreditAccountUseCase useCase;
@@ -43,9 +43,9 @@ class GetCreditAccountUseCaseTest {
     @BeforeEach
     void setUp() {
         eventStore = mock(EventStore.class);
-        idempotencyPort = mock(IdempotencyRepository.class);
+        idempotencyRepository = mock(IdempotencyRepository.class);
         objectMapper = new ObjectMapper();
-        support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
+        support = new CreditAccountUseCaseSupport(eventStore, idempotencyRepository, objectMapper);
         useCase = new GetCreditAccountUseCase(support);
     }
 

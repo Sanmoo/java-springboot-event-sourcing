@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 class ReceivePaymentUseCaseTest {
 
     private EventStore eventStore;
-    private IdempotencyRepository idempotencyPort;
+    private IdempotencyRepository idempotencyRepository;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
     private ReceivePaymentUseCase useCase;
@@ -37,9 +37,9 @@ class ReceivePaymentUseCaseTest {
     @BeforeEach
     void setUp() {
         eventStore = mock(EventStore.class);
-        idempotencyPort = mock(IdempotencyRepository.class);
+        idempotencyRepository = mock(IdempotencyRepository.class);
         objectMapper = new ObjectMapper();
-        support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
+        support = new CreditAccountUseCaseSupport(eventStore, idempotencyRepository, objectMapper);
         useCase = new ReceivePaymentUseCase(support);
     }
 
@@ -51,8 +51,8 @@ class ReceivePaymentUseCaseTest {
         AuthorizationId authorizationId = AuthorizationId.of(authId);
         Instant now = Instant.now();
 
-        doNothing().when(idempotencyPort).lockKey(anyString());
-        when(idempotencyPort.findByKey(anyString())).thenReturn(java.util.Optional.empty());
+        doNothing().when(idempotencyRepository).lockKey(anyString());
+        when(idempotencyRepository.findByKey(anyString())).thenReturn(java.util.Optional.empty());
         when(eventStore.loadEvents(any(), any())).thenReturn(List.of(
                 new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 1,
                         new CreditAccountOpened(creditAccountId, now), now, Map.of()),

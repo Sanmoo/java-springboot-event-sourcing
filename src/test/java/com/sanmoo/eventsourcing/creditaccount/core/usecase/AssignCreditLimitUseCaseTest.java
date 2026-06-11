@@ -30,7 +30,7 @@ import static org.mockito.Mockito.*;
 class AssignCreditLimitUseCaseTest {
 
     private EventStore eventStore;
-    private IdempotencyRepository idempotencyPort;
+    private IdempotencyRepository idempotencyRepository;
     private ObjectMapper objectMapper;
     private CreditAccountUseCaseSupport support;
     private AssignCreditLimitUseCase useCase;
@@ -38,9 +38,9 @@ class AssignCreditLimitUseCaseTest {
     @BeforeEach
     void setUp() {
         eventStore = mock(EventStore.class);
-        idempotencyPort = mock(IdempotencyRepository.class);
+        idempotencyRepository = mock(IdempotencyRepository.class);
         objectMapper = new ObjectMapper();
-        support = new CreditAccountUseCaseSupport(eventStore, idempotencyPort, objectMapper);
+        support = new CreditAccountUseCaseSupport(eventStore, idempotencyRepository, objectMapper);
         useCase = new AssignCreditLimitUseCase(support);
     }
 
@@ -49,8 +49,8 @@ class AssignCreditLimitUseCaseTest {
         UUID accountId = UUID.randomUUID();
         CreditAccountId creditAccountId = CreditAccountId.of(accountId);
 
-        doNothing().when(idempotencyPort).lockKey(anyString());
-        when(idempotencyPort.findByKey(anyString())).thenReturn(java.util.Optional.empty());
+        doNothing().when(idempotencyRepository).lockKey(anyString());
+        when(idempotencyRepository.findByKey(anyString())).thenReturn(java.util.Optional.empty());
         when(eventStore.loadEvents(any(), any())).thenReturn(List.of(
                 new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 1,
                         new CreditAccountOpened(creditAccountId, Instant.now()), Instant.now(), Map.of())
@@ -70,8 +70,8 @@ class AssignCreditLimitUseCaseTest {
         CreditAccountId creditAccountId = CreditAccountId.of(UUID.randomUUID());
         var input = new AssignCreditLimitInput("conflict-key", creditAccountId, Money.of("200.00"));
 
-        doNothing().when(idempotencyPort).lockKey(eq("conflict-key"));
-        when(idempotencyPort.findByKey(eq("conflict-key"))).thenReturn(java.util.Optional.of(
+        doNothing().when(idempotencyRepository).lockKey(eq("conflict-key"));
+        when(idempotencyRepository.findByKey(eq("conflict-key"))).thenReturn(java.util.Optional.of(
                 new IdempotencyRecord(
                         "conflict-key",
                         "AssignCreditLimit",
@@ -88,7 +88,7 @@ class AssignCreditLimitUseCaseTest {
 
         verify(eventStore, never()).loadEvents(any(), any());
         verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
-        verify(idempotencyPort, never()).saveResult(anyString(), anyString(), anyString(), anyString(), anyString(), anyLong());
+        verify(idempotencyRepository, never()).saveResult(anyString(), anyString(), anyString(), anyString(), anyString(), anyLong());
     }
 
     @Test
@@ -97,8 +97,8 @@ class AssignCreditLimitUseCaseTest {
         CreditAccountId creditAccountId = CreditAccountId.of(accountId);
         var input = new AssignCreditLimitInput("serialize-key", creditAccountId, Money.of("250.00"));
 
-        doNothing().when(idempotencyPort).lockKey(eq("serialize-key"));
-        when(idempotencyPort.findByKey(eq("serialize-key"))).thenReturn(java.util.Optional.empty());
+        doNothing().when(idempotencyRepository).lockKey(eq("serialize-key"));
+        when(idempotencyRepository.findByKey(eq("serialize-key"))).thenReturn(java.util.Optional.empty());
         when(eventStore.loadEvents(eq("CreditAccount"), eq(accountId.toString()))).thenReturn(List.of(
                 new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 1,
                         new CreditAccountOpened(creditAccountId, Instant.parse("2026-06-01T10:00:00Z")),
@@ -124,7 +124,7 @@ class AssignCreditLimitUseCaseTest {
                 .containsEntry("commandType", "AssignCreditLimit");
 
         ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-        verify(idempotencyPort).saveResult(
+        verify(idempotencyRepository).saveResult(
                 eq("serialize-key"),
                 eq("AssignCreditLimit"),
                 eq(accountId.toString()),

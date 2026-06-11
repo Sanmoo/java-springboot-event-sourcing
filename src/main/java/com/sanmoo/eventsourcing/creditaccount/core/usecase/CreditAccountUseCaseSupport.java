@@ -37,7 +37,7 @@ public class CreditAccountUseCaseSupport {
     private static final String AGGREGATE_TYPE = "CreditAccount";
 
     private final EventStore eventStore;
-    private final IdempotencyRepository idempotencyPort;
+    private final IdempotencyRepository idempotencyRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -52,9 +52,9 @@ public class CreditAccountUseCaseSupport {
         String aggregateId = creditAccountId.value().toString();
         String requestHash = calculateRequestHash(input);
 
-        idempotencyPort.lockKey(idempotencyKey);
+        idempotencyRepository.lockKey(idempotencyKey);
 
-        Optional<IdempotencyRecord> existing = idempotencyPort.findByKey(idempotencyKey);
+        Optional<IdempotencyRecord> existing = idempotencyRepository.findByKey(idempotencyKey);
         if (existing.isPresent()) {
             IdempotencyRecord record = existing.get();
             if (!requestHash.equals(record.requestHash())) {
@@ -67,7 +67,7 @@ public class CreditAccountUseCaseSupport {
 
         ExecutionResult result = execute(aggregateId, creditAccountId, executor, idempotencyKey, commandType, requestHash);
         String payload = serializeResult(result);
-        idempotencyPort.saveResult(
+        idempotencyRepository.saveResult(
                 idempotencyKey,
                 commandType,
                 aggregateId,
