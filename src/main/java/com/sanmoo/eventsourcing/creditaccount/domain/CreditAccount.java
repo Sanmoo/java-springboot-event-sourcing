@@ -39,7 +39,7 @@ public final class CreditAccount {
         ensureOpened();
         if (creditLimit != null) { throw new CreditLimitAlreadyAssignedException("credit limit already assigned"); }
         if (!limit.isGreaterThan(Money.zero())) { throw new InvalidCreditLimitException("credit limit must be positive"); }
-        return List.of(new CreditLimitAssigned(id, limit, occurredAt));
+        return recordThat(new CreditLimitAssigned(id, limit, occurredAt));
     }
 
     public List<CreditAccountEvent> changeCreditLimit(Money newLimit, Instant occurredAt) {

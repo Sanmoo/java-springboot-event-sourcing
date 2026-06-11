@@ -198,6 +198,8 @@ class CreditAccountTest {
         var events = account.assignCreditLimit(Money.of("500.00"), Instant.parse("2026-06-01T10:01:00Z"));
 
         assertThat(events).containsExactly(new CreditLimitAssigned(accountId, Money.of("500.00"), Instant.parse("2026-06-01T10:01:00Z")));
+        assertThat(account.snapshot().creditLimit()).isEqualTo(Money.of("500.00"));
+        assertThat(account.version()).isEqualTo(2L);
     }
 
     @Test
