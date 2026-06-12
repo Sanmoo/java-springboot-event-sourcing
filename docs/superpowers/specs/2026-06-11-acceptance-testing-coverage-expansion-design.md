@@ -117,10 +117,9 @@ Cenário: Consulta com minVersion maior que a versão projetada retorna 202
 
 ### Updates to `AcceptanceHttpClient`
 
-- Each command method returns the raw `ResponseEntity<Map>` and stores it on `AcceptanceTestContext` for later inspection. The `Map<String, Object>` body convenience return can be preserved, or the API can be changed to return `ResponseEntity<Map>` directly. The spec preserves the `Map` return for happy-path code, and adds a `lastResponse` accessor on the context.
-- New methods:
-  - `Map<String, Object> assignCreditLimitWithKey(UUID accountId, String limit, String idempotencyKey)`
-  - `ResponseEntity<Map> getSummaryRaw(UUID accountId, Long minVersion)` (returns raw response so the step can assert 200 vs 202 directly).
+- Each command method continues to return the `Map<String, Object>` body for happy-path code, but also stores the raw `ResponseEntity<Map>` (status + body) on `AcceptanceTestContext` so error step definitions can inspect it.
+- A new `getSummaryRaw(UUID accountId, Long minVersion)` returns the raw `ResponseEntity<Map>` directly so steps can assert 200 vs 202 without going through polling.
+- A new `assignCreditLimitWithKey(UUID accountId, String limit, String idempotencyKey)` accepts an explicit `Idempotency-Key` for idempotency scenarios.
 
 ### Updates to `AcceptanceTestContext`
 
