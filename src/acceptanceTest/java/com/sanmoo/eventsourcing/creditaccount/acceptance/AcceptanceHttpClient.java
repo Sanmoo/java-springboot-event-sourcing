@@ -184,13 +184,32 @@ public class AcceptanceHttpClient {
         if (minVersion != null) {
             url = url + "?minVersion=" + minVersion;
         }
-        ResponseEntity<Map> response = rest.exchange(
-                url,
-                HttpMethod.GET,
-                HttpEntity.EMPTY,
-                Map.class
-        );
-        context.setLastResponse(response);
+        Instant deadline = Instant.now().plus(pollingTimeout);
+        ResponseEntity<Map> response = null;
+        while (Instant.now().isBefore(deadline)) {
+            response = rest.exchange(
+                    url,
+                    HttpMethod.GET,
+                    HttpEntity.EMPTY,
+                    Map.class
+            );
+            if (response.getStatusCode() == HttpStatus.OK) {
+                context.setLastResponse(response);
+                return response;
+            }
+            if (response.getStatusCode() == HttpStatus.ACCEPTED) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> body = response.getBody();
+                if (body != null && body.get("currentProjectionVersion") != null) {
+                    context.setLastResponse(response);
+                    return response;
+                }
+            }
+            sleep();
+        }
+        if (response != null) {
+            context.setLastResponse(response);
+        }
         return response;
     }
 
