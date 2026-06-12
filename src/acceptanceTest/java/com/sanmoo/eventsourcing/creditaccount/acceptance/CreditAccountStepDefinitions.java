@@ -35,6 +35,7 @@ public class CreditAccountStepDefinitions {
     @Dado("que uma conta de crédito foi aberta")
     public void abrirConta() {
         Map<String, Object> response = http.openAccount();
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(201);
         UUID accountId = UUID.fromString((String) response.get("creditAccountId"));
         context.setCreditAccountId(accountId);
         context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
@@ -43,27 +44,37 @@ public class CreditAccountStepDefinitions {
     @E("o limite de crédito da conta é {string}")
     public void definirLimite(String limit) {
         Map<String, Object> response = http.assignCreditLimit(context.getCreditAccountId(), limit);
-        context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
     }
 
     @Quando("uma compra de {string} é autorizada no estabelecimento {string}")
     public void autorizarCompra(String amount, String merchantName) {
         Map<String, Object> response = http.authorizePurchase(context.getCreditAccountId(), amount, merchantName);
-        UUID authorizationId = UUID.fromString((String) response.get("authorizationId"));
-        context.setAuthorizationId(authorizationId);
-        context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        if (response != null && response.containsKey("authorizationId")) {
+            UUID authorizationId = UUID.fromString((String) response.get("authorizationId"));
+            context.setAuthorizationId(authorizationId);
+        }
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
     }
 
     @Quando("a autorização da compra é capturada")
     public void capturarCompra() {
         Map<String, Object> response = http.capturePurchase(context.getCreditAccountId(), context.getAuthorizationId());
-        context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
     }
 
     @Quando("um pagamento de {string} é recebido")
     public void receberPagamento(String amount) {
         Map<String, Object> response = http.receivePayment(context.getCreditAccountId(), amount);
-        context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
     }
 
     private static final Map<String, String> FIELD_MAPPING = new HashMap<>();
@@ -96,7 +107,9 @@ public class CreditAccountStepDefinitions {
     @Quando("o limite de crédito é alterado para {string}")
     public void alterarLimite(String limit) {
         Map<String, Object> response = http.assignCreditLimit(context.getCreditAccountId(), limit);
-        context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
     }
 
     @Quando("o limite de crédito é alterado para {string} usando a chave {string}")

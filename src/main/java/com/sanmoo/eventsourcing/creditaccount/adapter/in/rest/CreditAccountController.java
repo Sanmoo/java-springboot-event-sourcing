@@ -5,6 +5,8 @@ import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.*;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.*;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.*;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.CreditLimitAlreadyAssignedException;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.CreditLimitNotAssignedException;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,6 +25,7 @@ public class CreditAccountController {
 
     private final OpenCreditAccountUseCase openCreditAccountUseCase;
     private final AssignCreditLimitUseCase assignCreditLimitUseCase;
+    private final ChangeCreditLimitUseCase changeCreditLimitUseCase;
     private final AuthorizePurchaseUseCase authorizePurchaseUseCase;
     private final CapturePurchaseUseCase capturePurchaseUseCase;
     private final ReleasePurchaseAuthorizationUseCase releasePurchaseAuthorizationUseCase;
@@ -48,9 +51,16 @@ public class CreditAccountController {
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody AssignCreditLimitRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
-        var input = new AssignCreditLimitInput(idempotencyKey, creditAccountId, Money.positive(request.limit()));
-        var output = assignCreditLimitUseCase.execute(input);
-        return ResponseEntity.ok(toMap(output.account()));
+        Money limit = Money.positive(request.limit());
+        try {
+            var input = new AssignCreditLimitInput(idempotencyKey, creditAccountId, limit);
+            var output = assignCreditLimitUseCase.execute(input);
+            return ResponseEntity.ok(toMap(output.account()));
+        } catch (CreditLimitAlreadyAssignedException e) {
+            var changeInput = new ChangeCreditLimitInput(idempotencyKey, creditAccountId, limit);
+            var changeOutput = changeCreditLimitUseCase.execute(changeInput);
+            return ResponseEntity.ok(toMap(changeOutput.account()));
+        }
     }
 
     @PostMapping("/{id}/purchases/authorizations")

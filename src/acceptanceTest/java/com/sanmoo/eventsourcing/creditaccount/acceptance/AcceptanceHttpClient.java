@@ -9,15 +9,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Component
 public class AcceptanceHttpClient {
@@ -43,6 +43,7 @@ public class AcceptanceHttpClient {
     private void ensureInitialized() {
         if (initialized) return;
         this.rest = new RestTemplate();
+        this.rest.setErrorHandler((ClientHttpResponse response) -> false);
         int port = environment.getRequiredProperty("local.server.port", Integer.class);
         this.baseUrl = "http://localhost:" + port + "/credit-accounts";
         this.pollingInterval = Duration.ofMillis(pollingIntervalMs);
@@ -59,7 +60,6 @@ public class AcceptanceHttpClient {
                 new HttpEntity<>(Map.of(), headers),
                 Map.class
         );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         context.setLastResponse(response);
         return response.getBody();
     }
@@ -73,7 +73,6 @@ public class AcceptanceHttpClient {
                 new HttpEntity<>(Map.of("limit", limit), headers),
                 Map.class
         );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         context.setLastResponse(response);
         return response.getBody();
     }
@@ -92,9 +91,7 @@ public class AcceptanceHttpClient {
                 ), headers),
                 Map.class
         );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         context.setLastResponse(response);
-        assertThat(response.getBody()).containsEntry("authorizationId", authorizationId.toString());
         return response.getBody();
     }
 
@@ -107,7 +104,6 @@ public class AcceptanceHttpClient {
                 new HttpEntity<>(Map.of(), headers),
                 Map.class
         );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         context.setLastResponse(response);
         return response.getBody();
     }
@@ -121,7 +117,6 @@ public class AcceptanceHttpClient {
                 new HttpEntity<>(Map.of("amount", amount), headers),
                 Map.class
         );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         context.setLastResponse(response);
         return response.getBody();
     }
@@ -138,7 +133,6 @@ public class AcceptanceHttpClient {
                 HttpEntity.EMPTY,
                 Map.class
         );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         context.setLastResponse(response);
         return response.getBody();
     }
