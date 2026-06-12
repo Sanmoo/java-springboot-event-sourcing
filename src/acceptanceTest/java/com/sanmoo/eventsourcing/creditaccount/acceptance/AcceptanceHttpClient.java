@@ -25,6 +25,9 @@ public class AcceptanceHttpClient {
     @Autowired
     private Environment environment;
 
+    @Autowired
+    private AcceptanceTestContext context;
+
     @Value("${acceptance.polling.interval-ms:150}")
     private long pollingIntervalMs;
 
@@ -57,6 +60,7 @@ public class AcceptanceHttpClient {
                 Map.class
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        context.setLastResponse(response);
         return response.getBody();
     }
 
@@ -70,6 +74,7 @@ public class AcceptanceHttpClient {
                 Map.class
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        context.setLastResponse(response);
         return response.getBody();
     }
 
@@ -88,6 +93,7 @@ public class AcceptanceHttpClient {
                 Map.class
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        context.setLastResponse(response);
         assertThat(response.getBody()).containsEntry("authorizationId", authorizationId.toString());
         return response.getBody();
     }
@@ -102,6 +108,7 @@ public class AcceptanceHttpClient {
                 Map.class
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        context.setLastResponse(response);
         return response.getBody();
     }
 
@@ -115,6 +122,7 @@ public class AcceptanceHttpClient {
                 Map.class
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        context.setLastResponse(response);
         return response.getBody();
     }
 
@@ -131,6 +139,7 @@ public class AcceptanceHttpClient {
                 Map.class
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        context.setLastResponse(response);
         return response.getBody();
     }
 
@@ -149,6 +158,7 @@ public class AcceptanceHttpClient {
                 latest = response.getBody();
                 long projectedVersion = ((Number) latest.get("projectedVersion")).longValue();
                 if (projectedVersion >= minimumVersion) {
+                    context.setLastResponse(response);
                     return latest;
                 }
             }
@@ -158,6 +168,36 @@ public class AcceptanceHttpClient {
                 "Timed out waiting for projected version >= " + minimumVersion
                         + " for account " + accountId + "; last response: " + latest
         );
+    }
+
+    public Map<String, Object> assignCreditLimitWithKey(UUID accountId, String limit, String idempotencyKey) {
+        ensureInitialized();
+        HttpHeaders headers = headersWithIdempotencyKey();
+        headers.set("Idempotency-Key", idempotencyKey);
+        ResponseEntity<Map> response = rest.exchange(
+                baseUrl + "/" + accountId + "/credit-limit",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of("limit", limit), headers),
+                Map.class
+        );
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
+    public ResponseEntity<Map> getSummaryRaw(UUID accountId, Long minVersion) {
+        ensureInitialized();
+        String url = baseUrl + "/" + accountId;
+        if (minVersion != null) {
+            url = url + "?minVersion=" + minVersion;
+        }
+        ResponseEntity<Map> response = rest.exchange(
+                url,
+                HttpMethod.GET,
+                HttpEntity.EMPTY,
+                Map.class
+        );
+        context.setLastResponse(response);
+        return response;
     }
 
     private void sleep() {
