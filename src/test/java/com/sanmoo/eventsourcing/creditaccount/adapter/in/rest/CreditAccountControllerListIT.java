@@ -67,7 +67,7 @@ class CreditAccountControllerListIT {
                 List.of(new CreditAccountOpened(CreditAccountId.of(id), Instant.now())), Map.of());
         eventStoreAdapter.appendEvents("CreditAccount", id.toString(), 1,
                 List.of(new CreditLimitAssigned(CreditAccountId.of(id), Money.of("1000.00"), Instant.now())), Map.of());
-        projectionWorker.processOnce();
+        projectionWorker.processOnce(50);
 
         ResponseEntity<Map> response = rest.getForEntity(url("/credit-accounts/" + id), Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -100,7 +100,7 @@ class CreditAccountControllerListIT {
         UUID id = UUID.randomUUID();
         eventStoreAdapter.appendEvents("CreditAccount", id.toString(), 0,
                 List.of(new CreditAccountOpened(CreditAccountId.of(id), Instant.now())), Map.of());
-        projectionWorker.processOnce();
+        projectionWorker.processOnce(50);
 
         ResponseEntity<Map> response = rest.getForEntity(url("/credit-accounts"), Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

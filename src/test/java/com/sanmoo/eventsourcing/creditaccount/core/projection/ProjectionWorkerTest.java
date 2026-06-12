@@ -2,14 +2,13 @@ package com.sanmoo.eventsourcing.creditaccount.core.projection;
 
 import com.sanmoo.eventsourcing.creditaccount.core.port.CreditAccountSummaryRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventRepository;
+import com.sanmoo.eventsourcing.creditaccount.core.port.TransactionRunner;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
-import com.sanmoo.eventsourcing.creditaccount.projection.ProjectionProperties;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,8 +26,12 @@ class ProjectionWorkerTest {
         OutboxEventRepository outbox = mock(OutboxEventRepository.class);
         CreditAccountSummaryRepository summaries = mock(CreditAccountSummaryRepository.class);
         CreditAccountSummaryProjector projector = new CreditAccountSummaryProjector();
-        ProjectionProperties props = new ProjectionProperties();
-        props.setBatchSize(10);
+        TransactionRunner transactionRunner = new TransactionRunner() {
+            @Override
+            public <T> T runInTransaction(java.util.function.Supplier<T> action) {
+                return action.get();
+            }
+        };
 
         UUID accountId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
@@ -36,17 +39,11 @@ class ProjectionWorkerTest {
                 "CreditAccountOpened", new CreditAccountOpened(CreditAccountId.of(accountId), Instant.now()),
                 java.util.Map.of(), Instant.now());
 
-        TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
-        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
-            org.springframework.transaction.support.TransactionCallback<Object> callback = invocation.getArgument(0);
-            return callback.doInTransaction(null);
-        });
-
         when(outbox.findPending(10)).thenReturn(List.of(event));
         when(summaries.findById(CreditAccountId.of(accountId))).thenReturn(Optional.empty());
 
-        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, props, transactionTemplate);
-        int processed = worker.processOnce();
+        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, transactionRunner);
+        int processed = worker.processOnce(10);
 
         assertThat(processed).isEqualTo(1);
         ArgumentCaptor<CreditAccountSummary> captor = ArgumentCaptor.forClass(CreditAccountSummary.class);
@@ -60,8 +57,12 @@ class ProjectionWorkerTest {
         OutboxEventRepository outbox = mock(OutboxEventRepository.class);
         CreditAccountSummaryRepository summaries = mock(CreditAccountSummaryRepository.class);
         CreditAccountSummaryProjector projector = mock(CreditAccountSummaryProjector.class);
-        ProjectionProperties props = new ProjectionProperties();
-        props.setBatchSize(10);
+        TransactionRunner transactionRunner = new TransactionRunner() {
+            @Override
+            public <T> T runInTransaction(java.util.function.Supplier<T> action) {
+                return action.get();
+            }
+        };
 
         UUID accountId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
@@ -69,18 +70,12 @@ class ProjectionWorkerTest {
                 "CreditAccountOpened", new CreditAccountOpened(CreditAccountId.of(accountId), Instant.now()),
                 java.util.Map.of(), Instant.now());
 
-        TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
-        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
-            org.springframework.transaction.support.TransactionCallback<Object> callback = invocation.getArgument(0);
-            return callback.doInTransaction(null);
-        });
-
         when(outbox.findPending(10)).thenReturn(List.of(event));
         when(summaries.findById(any())).thenReturn(Optional.empty());
         when(projector.project(any(), any())).thenThrow(new RuntimeException("boom"));
 
-        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, props, transactionTemplate);
-        int processed = worker.processOnce();
+        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, transactionRunner);
+        int processed = worker.processOnce(10);
 
         assertThat(processed).isEqualTo(0);
         verify(outbox).markFailed(eq(eventId), contains("boom"));

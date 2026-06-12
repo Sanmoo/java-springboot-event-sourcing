@@ -2,7 +2,6 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.PageResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.*;
-import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.*;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.*;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.CreditLimitAlreadyAssignedException;
@@ -132,39 +131,17 @@ public class CreditAccountController {
             @RequestParam(value = "size", defaultValue = "20") int size) {
         var input = new ListCreditAccountsInput(page, size);
         var output = listCreditAccountsUseCase.execute(input);
-        var items = output.page().items().stream()
-                .map(this::summaryToMap)
+        var items = output.items().stream()
+                .map(this::toMap)
                 .toList();
         var response = new PageResponse(
                 items,
-                output.page().page(),
-                output.page().size(),
-                output.page().totalItems(),
-                output.page().totalPages()
+                output.page(),
+                output.size(),
+                output.totalItems(),
+                output.totalPages()
         );
         return ResponseEntity.ok(response);
-    }
-
-    private Map<String, Object> summaryToMap(CreditAccountSummary summary) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("creditAccountId", summary.creditAccountId().toString());
-        data.put("opened", summary.opened());
-        data.put("creditLimit", summary.creditLimit());
-        data.put("outstandingBalance", summary.outstandingBalance());
-        data.put("authorizedAmount", summary.authorizedAmount());
-        data.put("availableLimit", summary.availableLimit());
-        data.put("projectedVersion", summary.projectedVersion());
-        data.put("authorizations", summary.authorizations().stream()
-                .map(auth -> {
-                    Map<String, Object> authMap = new LinkedHashMap<>();
-                    authMap.put("authorizationId", auth.authorizationId().toString());
-                    authMap.put("amount", auth.amount());
-                    authMap.put("status", auth.status());
-                    authMap.put("merchantName", auth.merchantName());
-                    return authMap;
-                })
-                .toList());
-        return data;
     }
 
     private Map<String, Object> toMap(CreditAccountOutput output) {

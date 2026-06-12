@@ -2,13 +2,12 @@ package com.sanmoo.eventsourcing.creditaccount.core.projection;
 
 import com.sanmoo.eventsourcing.creditaccount.core.port.CreditAccountSummaryRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventRepository;
+import com.sanmoo.eventsourcing.creditaccount.core.port.TransactionRunner;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
-import com.sanmoo.eventsourcing.creditaccount.projection.ProjectionProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,15 +20,14 @@ public class ProjectionWorker {
     private final OutboxEventRepository outbox;
     private final CreditAccountSummaryRepository summaries;
     private final CreditAccountSummaryProjector projector;
-    private final ProjectionProperties properties;
-    private final TransactionTemplate transactionTemplate;
+    private final TransactionRunner transactionRunner;
 
-    public int processOnce() {
-        List<OutboxEvent> pending = outbox.findPending(properties.getBatchSize());
+    public int processOnce(int batchSize) {
+        List<OutboxEvent> pending = outbox.findPending(batchSize);
         int processed = 0;
         for (OutboxEvent event : pending) {
             try {
-                transactionTemplate.execute(status -> {
+                transactionRunner.runInTransaction(() -> {
                     processOne(event);
                     return null;
                 });

@@ -1,5 +1,11 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase.dto;
 
-import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummaryPage;
+import java.util.List;
 
-public record ListCreditAccountsOutput(CreditAccountSummaryPage page) {}
+public record ListCreditAccountsOutput(
+        List<CreditAccountOutput> items,
+        int page,
+        int size,
+        long totalItems,
+        int totalPages
+) {}

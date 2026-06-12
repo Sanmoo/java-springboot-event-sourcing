@@ -75,7 +75,7 @@ class CreditAccountControllerIT {
         assertThat(authResponse.getBody()).containsEntry("authorizationId", authorizationId);
 
         // Project events before reading summary
-        projectionWorker.processOnce();
+        projectionWorker.processOnce(50);
 
         // 4. GET /credit-accounts/{id} (verify available limit decreased)
         var getAfterAuth = restTemplate.getForEntity(
@@ -94,7 +94,7 @@ class CreditAccountControllerIT {
         assertThat(captureResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // Project events before reading summary
-        projectionWorker.processOnce();
+        projectionWorker.processOnce(50);
 
         // 6. GET check outstanding balance
         var getAfterCapture = restTemplate.getForEntity(
@@ -113,7 +113,7 @@ class CreditAccountControllerIT {
         assertThat(paymentResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // Project events before reading summary
-        projectionWorker.processOnce();
+        projectionWorker.processOnce(50);
 
         // 8. GET check outstanding balance reduced
         var getAfterPayment = restTemplate.getForEntity(
@@ -158,7 +158,7 @@ class CreditAccountControllerIT {
         assertThat(releaseResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // Project events before reading summary
-        projectionWorker.processOnce();
+        projectionWorker.processOnce(50);
 
         var getAfterRelease = restTemplate.getForEntity(baseUrl + "/" + accountId, Map.class);
         assertThat(getAfterRelease.getStatusCode()).isEqualTo(HttpStatus.OK);
