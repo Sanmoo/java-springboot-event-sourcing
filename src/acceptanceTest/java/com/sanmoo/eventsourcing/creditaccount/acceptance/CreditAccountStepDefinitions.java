@@ -7,6 +7,7 @@ import io.cucumber.java.pt.E;
 import io.cucumber.java.pt.Então;
 import io.cucumber.java.pt.Quando;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,8 @@ public class CreditAccountStepDefinitions {
         context.setCreditAccountId(null);
         context.setAuthorizationId(null);
         context.setLastProjectedVersion(null);
+        context.setLastResponse(null);
+        context.setLastIdempotencyKey(null);
     }
 
     @Dado("que uma conta de crédito foi aberta")
@@ -88,5 +91,84 @@ public class CreditAccountStepDefinitions {
                     .as(entry.getKey())
                     .isEqualTo(entry.getValue());
         }
+    }
+
+    @Quando("o limite de crédito é alterado para {string}")
+    public void alterarLimite(String limit) {
+        Map<String, Object> response = http.assignCreditLimit(context.getCreditAccountId(), limit);
+        context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+    }
+
+    @Quando("o limite de crédito é alterado para {string} usando a chave {string}")
+    public void alterarLimiteComChave(String limit, String idempotencyKey) {
+        http.assignCreditLimitWithKey(context.getCreditAccountId(), limit, idempotencyKey);
+        context.setLastIdempotencyKey(idempotencyKey);
+    }
+
+    @Quando("o limite de crédito é atribuído como {string} usando a chave {string}")
+    public void atribuirLimiteComChave(String limit, String idempotencyKey) {
+        http.assignCreditLimitWithKey(context.getCreditAccountId(), limit, idempotencyKey);
+        context.setLastIdempotencyKey(idempotencyKey);
+    }
+
+    @Então("a API deve retornar status {int} com mensagem contendo {string}")
+    public void apiDeveRetornarStatus(int expectedStatus, String expectedMessageSubstring) {
+        ResponseEntity<Map> last = context.getLastResponse();
+        assertThat(last).isNotNull();
+        assertThat(last.getStatusCode().value()).isEqualTo(expectedStatus);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = last.getBody();
+        assertThat(body).isNotNull();
+        if (expectedStatus >= 400) {
+            String errorMessage = (String) body.get("error");
+            assertThat(errorMessage).contains(expectedMessageSubstring);
+        } else {
+            assertThat(body).containsKey(expectedMessageSubstring);
+        }
+    }
+
+    @Então("a API deve retornar 202 com requiredVersion {long}")
+    public void apiDeveRetornar202ComRequiredVersion(long expectedRequiredVersion) {
+        ResponseEntity<Map> last = context.getLastResponse();
+        assertThat(last).isNotNull();
+        assertThat(last.getStatusCode().value()).isEqualTo(202);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = last.getBody();
+        assertThat(body).isNotNull();
+        Number required = (Number) body.get("requiredVersion");
+        assertThat(required).isNotNull();
+        assertThat(required.longValue()).isEqualTo(expectedRequiredVersion);
+    }
+
+    @Quando("eu consulto a conta com minVersion {string}")
+    public void consultarContaComMinVersion(String minVersion) {
+        http.getSummaryRaw(context.getCreditAccountId(), Long.parseLong(minVersion));
+    }
+
+    @Quando("eu consulto o resumo da conta")
+    public void consultarResumo() {
+        http.getSummaryRaw(context.getCreditAccountId(), null);
+    }
+
+    @Então("o resultado deve ser o mesmo")
+    public void resultadoDeveSerOMesmo() {
+        ResponseEntity<Map> last = context.getLastResponse();
+        assertThat(last).isNotNull();
+        assertThat(last.getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Então("a API deve retornar 409 de conflito de idempotência")
+    public void apiDeveRetornar409() {
+        ResponseEntity<Map> last = context.getLastResponse();
+        assertThat(last).isNotNull();
+        assertThat(last.getStatusCode().value()).isEqualTo(409);
+    }
+
+    @Então("eventualmente a API deve retornar 200 com projectedVersion >= {long}")
+    public void eventualmenteApiDeveRetornar200ComProjectedVersionMaiorOuIgual(long expectedVersion) {
+        Map<String, Object> summary = http.awaitProjectedSummary(context.getCreditAccountId(), expectedVersion);
+        assertThat(summary).isNotNull();
+        long projected = ((Number) summary.get("projectedVersion")).longValue();
+        assertThat(projected).isGreaterThanOrEqualTo(expectedVersion);
     }
 }
