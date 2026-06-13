@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/006-create-outbox-consumers.yaml
   - include:
       file: db/changelog/007-create-outbox-deliveries.yaml
+  - include:
+      file: db/changelog/008-create-projection-checkpoints.yaml
