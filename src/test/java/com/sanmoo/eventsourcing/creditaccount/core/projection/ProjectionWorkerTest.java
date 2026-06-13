@@ -6,7 +6,6 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventLoader;
 import com.sanmoo.eventsourcing.creditaccount.core.port.ProjectionCheckpointRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxDelivery;
-import com.sanmoo.eventsourcing.creditaccount.core.projection.OutboxDeliveryStatus;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.ProjectionCheckpoint;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;

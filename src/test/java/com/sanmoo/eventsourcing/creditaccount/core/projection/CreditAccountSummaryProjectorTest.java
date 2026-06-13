@@ -1,6 +1,5 @@
 package com.sanmoo.eventsourcing.creditaccount.core.projection;
 
-import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
@@ -9,7 +8,6 @@ import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
