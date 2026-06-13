@@ -1,5 +1,6 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
+import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventLoader;
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import lombok.RequiredArgsConstructor;
@@ -13,11 +14,12 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class JdbcOutboxEventAdapter implements OutboxEventRepository {
+public class JdbcOutboxEventAdapter implements OutboxEventRepository, OutboxEventLoader {
 
     private static final String FIND_PENDING_SQL = """
             SELECT event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload, metadata, occurred_at
@@ -33,8 +35,22 @@ public class JdbcOutboxEventAdapter implements OutboxEventRepository {
     private static final String MARK_FAILED_SQL =
             "UPDATE outbox_events SET processing_attempts = processing_attempts + 1, last_error = ? WHERE event_id = ?";
 
+    private static final String FIND_BY_ID_SQL = """
+            SELECT event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload, metadata, occurred_at
+            FROM outbox_events
+            WHERE event_id = ?
+            """;
+
     private final JdbcTemplate jdbcTemplate;
     private final EventTypeMapper eventTypeMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OutboxEvent> findById(UUID eventId) {
+        return jdbcTemplate.query(FIND_BY_ID_SQL, (rs, rowNum) -> map(rs), eventId)
+                .stream()
+                .findFirst();
+    }
 
     @Override
     @Transactional(readOnly = true)
