@@ -77,8 +77,7 @@ class AssignCreditLimitUseCaseTest {
                         "AssignCreditLimit",
                         creditAccountId.value().toString(),
                         "different-request-hash",
-                        "{\"aggregateId\":\"%s\",\"aggregateVersion\":1,\"responseData\":{}}".formatted(creditAccountId.value()),
-                        1L
+                        "{\"aggregateId\":\"%s\",\"aggregateVersion\":1,\"responseData\":{}}".formatted(creditAccountId.value())
                 )
         ));
 
@@ -88,7 +87,7 @@ class AssignCreditLimitUseCaseTest {
 
         verify(eventStore, never()).loadEvents(any(), any());
         verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
-        verify(idempotencyRepository, never()).saveResult(anyString(), anyString(), anyString(), anyString(), anyString(), anyLong());
+        verify(idempotencyRepository, never()).saveResult(anyString(), anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -129,8 +128,7 @@ class AssignCreditLimitUseCaseTest {
                 eq("AssignCreditLimit"),
                 eq(accountId.toString()),
                 anyString(),
-                payloadCaptor.capture(),
-                eq(2L)
+                payloadCaptor.capture()
         );
 
         @SuppressWarnings("unchecked")

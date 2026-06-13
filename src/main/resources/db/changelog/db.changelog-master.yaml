@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/008-create-projection-checkpoints.yaml
   - include:
       file: db/changelog/009-backfill-outbox-deliveries.yaml
+  - include:
+      file: db/changelog/010-drop-idempotency-aggregate-version.yaml

@@ -54,7 +54,7 @@ class JdbcIdempotencyAdapterIT {
         var requestHash = "hash-456";
         var responsePayload = "{\"status\":\"ok\"}";
 
-        idempotencyRepository.saveResult(key, commandType, aggregateId, requestHash, responsePayload, 7L);
+        idempotencyRepository.saveResult(key, commandType, aggregateId, requestHash, responsePayload);
 
         Optional<IdempotencyRecord> loaded = idempotencyRepository.findByKey(key);
         assertThat(loaded).isPresent();
@@ -63,7 +63,6 @@ class JdbcIdempotencyAdapterIT {
         assertThat(loaded.get().aggregateId()).isEqualTo(aggregateId);
         assertThat(loaded.get().requestHash()).isEqualTo(requestHash);
         assertThat(loaded.get().responsePayload()).isEqualTo(responsePayload);
-        assertThat(loaded.get().aggregateVersion()).isEqualTo(7L);
     }
 
     @Test
@@ -74,8 +73,7 @@ class JdbcIdempotencyAdapterIT {
                 "CreateAccount",
                 UUID.randomUUID().toString(),
                 "original-hash",
-                "{\"status\":\"ok\"}",
-                1L
+                "{\"status\":\"ok\"}"
         );
 
         Optional<IdempotencyRecord> loaded = idempotencyRepository.findByKey(key);

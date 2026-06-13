@@ -5,6 +5,5 @@ public record IdempotencyRecord(
         String commandType,
         String aggregateId,
         String requestHash,
-        String responsePayload,
-        long aggregateVersion
+        String responsePayload
 ) {}

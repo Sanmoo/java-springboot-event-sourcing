@@ -61,7 +61,6 @@ public class CreditAccountUseCaseSupport {
                 throw new IdempotencyConflictException("idempotency key reused with different request hash");
             }
             ExecutionResult result = deserializeReplay(record.responsePayload());
-            verifyReplayVersion(record, result);
             return outputMapper.apply(result);
         }
 
@@ -72,8 +71,7 @@ public class CreditAccountUseCaseSupport {
                 commandType,
                 aggregateId,
                 requestHash,
-                payload,
-                result.aggregateVersion()
+                payload
         );
         return outputMapper.apply(result);
     }
@@ -154,12 +152,7 @@ public class CreditAccountUseCaseSupport {
         }
     }
 
-    private void verifyReplayVersion(IdempotencyRecord record, ExecutionResult result) {
-        if (record.aggregateVersion() != result.aggregateVersion()) {
-            throw new RuntimeException("Stored idempotency aggregate version does not match replay payload for key: "
-                    + record.idempotencyKey());
-        }
-    }
+
 
     private String serializeResult(ExecutionResult result) {
         return serializeResponseResult(result, result.output());

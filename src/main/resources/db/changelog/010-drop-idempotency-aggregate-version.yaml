@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-drop-idempotency-aggregate-version
+      author: sanmoo
+      changes:
+        - dropColumn:
+            tableName: idempotency_records
+            columnName: aggregate_version

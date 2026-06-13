@@ -23,15 +23,15 @@ public class JdbcIdempotencyAdapter implements IdempotencyRepository {
     private static final String ADVISORY_LOCK_SQL = "SELECT pg_advisory_xact_lock(?)";
 
     private static final String SELECT_BY_KEY_SQL = """
-            SELECT idempotency_key, command_type, aggregate_id, request_hash, response_payload, aggregate_version
+            SELECT idempotency_key, command_type, aggregate_id, request_hash, response_payload
             FROM idempotency_records
             WHERE idempotency_key = ?
             """;
 
     private static final String INSERT_RESULT_SQL = """
             INSERT INTO idempotency_records
-                (idempotency_key, command_type, aggregate_id, request_hash, response_payload, aggregate_version, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
+                (idempotency_key, command_type, aggregate_id, request_hash, response_payload, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
             """;
 
     private final JdbcTemplate jdbcTemplate;
@@ -40,8 +40,7 @@ public class JdbcIdempotencyAdapter implements IdempotencyRepository {
             rs.getString("command_type"),
             rs.getString("aggregate_id"),
             rs.getString("request_hash"),
-            rs.getString("response_payload"),
-            rs.getLong("aggregate_version")
+            rs.getString("response_payload")
     );
 
     @Override
@@ -61,15 +60,14 @@ public class JdbcIdempotencyAdapter implements IdempotencyRepository {
     }
 
     @Override
-    public void saveResult(String key, String commandType, String aggregateId, String requestHash, String responsePayload, long aggregateVersion) {
+    public void saveResult(String key, String commandType, String aggregateId, String requestHash, String responsePayload) {
         int inserted = jdbcTemplate.update(
                 INSERT_RESULT_SQL,
                 key,
                 commandType,
                 aggregateId,
                 requestHash,
-                responsePayload,
-                aggregateVersion
+                responsePayload
         );
         if (inserted != 1) {
             throw new IllegalStateException("Idempotency result was not inserted for key: " + key);

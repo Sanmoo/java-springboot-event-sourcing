@@ -111,8 +111,7 @@ class AuthorizePurchaseUseCaseTest {
                         "AuthorizePurchase",
                         accountId.toString(),
                         calculateRequestHash(new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store")),
-                        responsePayload,
-                        3L
+                        responsePayload
                 )
         ));
 
