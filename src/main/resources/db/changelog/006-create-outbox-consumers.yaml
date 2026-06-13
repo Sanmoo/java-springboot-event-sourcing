@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-outbox-consumers
+      author: sanmoo
+      changes:
+        - createTable:
+            tableName: outbox_consumers
+            columns:
+              - column:
+                  name: consumer_name
+                  type: VARCHAR(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: enabled
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - insert:
+            tableName: outbox_consumers
+            columns:
+              - column:
+                  name: consumer_name
+                  value: credit-account-summary-projector
+              - column:
+                  name: description
+                  value: Credit account summary read model projector
+              - column:
+                  name: enabled
+                  valueBoolean: true
+              - column:
+                  name: created_at
+                  valueComputed: now()
+              - column:
+                  name: updated_at
+                  valueComputed: now()

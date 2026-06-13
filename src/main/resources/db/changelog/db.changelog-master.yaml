@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/004-create-outbox-events.yaml
   - include:
       file: db/changelog/005-create-credit-account-summary.yaml
+  - include:
+      file: db/changelog/006-create-outbox-consumers.yaml
