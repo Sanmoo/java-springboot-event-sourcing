@@ -5,6 +5,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 @SuppressWarnings("UnusedVariable") // ArchUnit reads @ArchTest fields reflectively
 @AnalyzeClasses(packages = "com.sanmoo.eventsourcing.creditaccount")
@@ -80,4 +81,17 @@ public class ArchitectureFitnessFunctions {
             .and().areNotEnums()
             .should().beRecords()
             .because("domain value objects are immutable and should be records");
+
+    @ArchTest
+    private static final ArchRule core_must_not_depend_on_spring_infrastructure_outside_allow_list = noClasses()
+            .that().resideInAPackage("..core..")
+            .should().dependOnClassesThat()
+            .resideInAnyPackage(
+                    "org.springframework.transaction.support..",
+                    "org.springframework.transaction",
+                    "org.springframework.jdbc..",
+                    "org.springframework.web..",
+                    "org.springframework.boot.."
+            )
+            .because("core must depend on framework integrations only through ports; the only Spring packages allowed in core are org.springframework.stereotype.. and org.springframework.transaction.annotation..");
 }
