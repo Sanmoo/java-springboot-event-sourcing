@@ -20,7 +20,7 @@ public class OutboxProjectionWorkerRunner {
     private final int batchSize;
     private final int staleRecoveryIntervalCycles;
 
-    private int cycle = 0;
+    private int cycle;
 
     public OutboxProjectionWorkerRunner(ProjectionWorker worker,
                                         StaleDeliveryRecovery recovery,
@@ -35,6 +35,7 @@ public class OutboxProjectionWorkerRunner {
     }
 
     @Scheduled(fixedDelayString = "${credit-account.projections.poll-interval:1s}")
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     public void run() {
         try {
             ProjectionWorkerResult result = worker.processOnce(batchSize);

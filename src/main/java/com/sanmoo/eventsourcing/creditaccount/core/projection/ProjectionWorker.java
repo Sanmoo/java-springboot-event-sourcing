@@ -27,7 +27,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ProjectionWorker {
 
-    private static final Logger log = LoggerFactory.getLogger(ProjectionWorker.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProjectionWorker.class);
 
     private final OutboxDeliveryRepository deliveries;
     private final CreditAccountSummaryRepository summaries;
@@ -72,6 +72,7 @@ public class ProjectionWorker {
         return result;
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     private ProjectionWorkerResult processOne(ProjectionWorkerResult result, OutboxDelivery delivery) {
         try {
             return transactionRunner.runInTransaction(() -> processOneInTransaction(result, delivery));
@@ -108,6 +109,7 @@ public class ProjectionWorker {
         };
     }
 
+    @SuppressWarnings("PMD.UnusedFormalParameter")
     private ProjectionWorkerResult applyProjection(ProjectionWorkerResult result,
                                                    OutboxDelivery delivery,
                                                    OutboxEvent event,

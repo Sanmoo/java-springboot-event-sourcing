@@ -5,6 +5,8 @@ public record ListCreditAccountsInput(int page, int size) {
     public static final int DEFAULT_SIZE = 20;
 
     public ListCreditAccountsInput {
-        if (size <= 0) size = DEFAULT_SIZE;
+        if (size <= 0) {
+            size = DEFAULT_SIZE;
+        }
     }
 }

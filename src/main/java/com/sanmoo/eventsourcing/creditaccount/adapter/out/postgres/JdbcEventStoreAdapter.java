@@ -70,6 +70,7 @@ public class JdbcEventStoreAdapter implements EventStore {
 
     @Override
     @Transactional
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     public AppendResult appendEvents(String aggregateType, String aggregateId, long expectedVersion, List<CreditAccountEvent> events, Map<String, String> metadata) {
         try {
             long version = expectedVersion;

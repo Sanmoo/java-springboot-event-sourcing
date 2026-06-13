@@ -93,7 +93,9 @@ public class JdbcOutboxEventAdapter implements OutboxEventRepository, OutboxEven
     }
 
     private String truncate(String error) {
-        if (error == null) return null;
+        if (error == null) {
+            return null;
+        }
         return error.length() > 1000 ? error.substring(0, 1000) : error;
     }
 }

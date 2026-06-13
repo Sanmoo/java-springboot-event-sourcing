@@ -85,10 +85,11 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
         List<CreditAccountSummary> items = jdbcTemplate.query(FIND_PAGE_SQL, this::map, request.size(), request.page() * request.size());
         Long total = jdbcTemplate.queryForObject(COUNT_SQL, Long.class);
         long totalItems = total == null ? 0L : total;
-        int totalPages = request.size() == 0 ? 0 : (int) Math.ceil((double) totalItems / (double) request.size());
+        int totalPages = request.size() == 0 ? 0 : (int) Math.ceil(totalItems / (double) request.size());
         return new CreditAccountSummaryPage(items, request.page(), request.size(), totalItems, totalPages);
     }
 
+    @SuppressWarnings("PMD.UnusedFormalParameter")
     private CreditAccountSummary map(ResultSet rs, int rowNum) throws SQLException {
         UUID id = rs.getObject("credit_account_id", UUID.class);
         boolean opened = rs.getBoolean("opened");
@@ -117,7 +118,9 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
     }
 
     private List<CreditAccountSummary.AuthorizationSummary> deserializeAuthorizations(String json) {
-        if (json == null || json.isBlank()) return List.of();
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
         try {
             return objectMapper.readValue(json,
                     objectMapper.getTypeFactory().constructCollectionType(List.class, CreditAccountSummary.AuthorizationSummary.class));

@@ -217,7 +217,9 @@ public class JdbcOutboxDeliveryRepository implements OutboxDeliveryRepository {
     }
 
     private String truncate(String value) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         return value.length() > 1000 ? value.substring(0, 1000) : value;
     }
 
@@ -243,9 +245,5 @@ public class JdbcOutboxDeliveryRepository implements OutboxDeliveryRepository {
 
     private static Instant toInstant(Timestamp ts) {
         return ts == null ? null : ts.toInstant();
-    }
-
-    private OutboxDeliveryStatus parseStatus(String status) {
-        return OutboxDeliveryStatus.valueOf(status);
     }
 }
