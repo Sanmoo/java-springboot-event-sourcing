@@ -10,6 +10,7 @@ import java.util.Optional;
 public class ProjectionGating {
 
     public ProjectionGatingResult decide(String projectionName, OutboxEvent event, Optional<ProjectionCheckpoint> checkpoint) {
+        // projectionName reserved for future multi-projection logging
         if (event.aggregateVersion() < 1L) {
             return ProjectionGatingResult.permanentFailure(
                     "Invalid aggregate version: " + event.aggregateVersion());
