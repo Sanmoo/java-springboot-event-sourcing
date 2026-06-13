@@ -1,4 +1,4 @@
-package com.sanmoo.eventsourcing.creditaccount.core.port.model;
+package com.sanmoo.eventsourcing.creditaccount.core.projection;
 
 public enum OutboxDeliveryStatus {
     PENDING,

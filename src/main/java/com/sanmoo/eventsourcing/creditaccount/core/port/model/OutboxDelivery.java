@@ -1,5 +1,6 @@
 package com.sanmoo.eventsourcing.creditaccount.core.port.model;
 
+import com.sanmoo.eventsourcing.creditaccount.core.projection.OutboxDeliveryStatus;
 import java.time.Instant;
 import java.util.UUID;
 
