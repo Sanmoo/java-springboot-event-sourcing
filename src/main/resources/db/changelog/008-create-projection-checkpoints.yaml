@@ -29,6 +29,8 @@ databaseChangeLog:
               - column:
                   name: last_event_id
                   type: UUID
+                  constraints:
+                    nullable: false
               - column:
                   name: updated_at
                   type: TIMESTAMP WITH TIME ZONE
