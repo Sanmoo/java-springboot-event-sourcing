@@ -1,0 +1,44 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-backfill-outbox-deliveries
+      author: sanmoo
+      changes:
+        - sql:
+            comment: Backfill outbox_deliveries for existing outbox_events
+            sql: |
+              INSERT INTO outbox_deliveries (
+                  event_id,
+                  consumer_name,
+                  status,
+                  processing_attempts,
+                  max_attempts,
+                  next_attempt_at,
+                  processed_at,
+                  failed_at,
+                  created_at,
+                  updated_at
+              )
+              SELECT
+                  e.event_id,
+                  c.consumer_name,
+                  CASE
+                      WHEN e.processed_at IS NOT NULL THEN 'PROCESSED'
+                      ELSE 'PENDING'
+                  END,
+                  0,
+                  10,
+                  now(),
+                  e.processed_at,
+                  NULL,
+                  now(),
+                  now()
+              FROM outbox_events e
+              CROSS JOIN outbox_consumers c
+              WHERE c.consumer_name = 'credit-account-summary-projector'
+                AND c.enabled = true
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM outbox_deliveries d
+                    WHERE d.event_id = e.event_id
+                      AND d.consumer_name = c.consumer_name
+                );
