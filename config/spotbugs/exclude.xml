@@ -8,9 +8,28 @@
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Or>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.PageResponse"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummaryPage"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.CreditAccountOutput"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.PurchaseAuthorizationOutput"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.CreditAccountOutput"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ListCreditAccountsOutput"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountSnapshot"/>
+        </Or>
+    </Match>
+
+    <!-- Records store mutable constructor arguments by design — expected behavior -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Or>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.PageResponse"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummaryPage"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.CreditAccountOutput"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ListCreditAccountsOutput"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountSnapshot"/>
         </Or>
     </Match>
@@ -22,14 +41,24 @@
             <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.EventTypeMapper"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcEventStoreAdapter"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcIdempotencyAdapter"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.CreditAccountOutput"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.PurchaseAuthorizationOutput"/>
-            <Class name="com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountSnapshot"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcCreditAccountSummaryAdapter"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcOutboxDeliveryRepository"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcOutboxEventAdapter"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcProjectionCheckpointRepository"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.out.transaction.SpringTransactionRunner"/>
         </Or>
     </Match>
 
-    <!-- Core use case support returns Map-based response data — intentional design -->
+    <!-- Projection core stores injected port dependencies without defensive copy — standard practice -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Or>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorker"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.core.projection.StaleDeliveryRecovery"/>
+        </Or>
+    </Match>
+
+    <!-- Core use case support stores Map-based response data — intentional design -->
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.CreditAccountUseCaseSupport"/>

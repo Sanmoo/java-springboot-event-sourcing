@@ -40,4 +40,13 @@
     </rule>
 
     <rule ref="category/java/performance.xml"/>
+
+    <!-- Test methods use snake_case (e.g. snake_case_methodName) for clarity -->
+    <rule ref="category/java/codestyle.xml/MethodNamingConventions">
+        <properties>
+            <property name="junit4TestPattern" value="[a-z][a-zA-Z0-9_]*"/>
+            <property name="junit5TestPattern" value="[a-z][a-zA-Z0-9_]*"/>
+            <property name="methodPattern" value="[a-z][a-zA-Z0-9_]*"/>
+        </properties>
+    </rule>
 </ruleset>
