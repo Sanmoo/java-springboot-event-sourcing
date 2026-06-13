@@ -6,28 +6,22 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.*;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Component
 public class CreditAccountSummaryProjector {
 
-    public ProjectionTick project(OutboxEvent event, Optional<CreditAccountSummary> current) {
-        long eventVersion = event.aggregateVersion();
-        if (current.isPresent()) {
-            long projected = current.get().projectedVersion();
-            if (projected >= eventVersion) {
-                return new ProjectionTick(current.get(), false);
-            }
-            if (projected + 1 < eventVersion) {
-                return new ProjectionTick(current.get(), false);
-            }
-        } else if (eventVersion != 1L) {
-            return new ProjectionTick(null, false);
-        }
+    public CreditAccountSummary apply(OutboxEvent event, CreditAccountSummary base) {
+        return apply(base, event.event(), event.eventId());
+    }
 
-        CreditAccountSummary base = current.orElseGet(() -> emptySummary(event));
-        CreditAccountSummary next = apply(base, event.event(), event.eventId());
-        return new ProjectionTick(next, true);
+    public CreditAccountSummary emptySummary(OutboxEvent event) {
+        UUID id = UUID.fromString(event.aggregateId());
+        return new CreditAccountSummary(
+                id, false, null, "0.00", "0.00", "0.00",
+                List.of(), 0L, null, event.occurredAt());
     }
 
     private CreditAccountSummary apply(CreditAccountSummary s, CreditAccountEvent event, UUID lastEventId) {
@@ -110,12 +104,5 @@ public class CreditAccountSummaryProjector {
                     s.authorizations(), s.projectedVersion() + 1, lastEventId, payment.occurredAt());
         }
         return s;
-    }
-
-    private CreditAccountSummary emptySummary(OutboxEvent event) {
-        UUID id = UUID.fromString(event.aggregateId());
-        return new CreditAccountSummary(
-                id, false, null, "0.00", "0.00", "0.00",
-                List.of(), 0L, null, event.occurredAt());
     }
 }

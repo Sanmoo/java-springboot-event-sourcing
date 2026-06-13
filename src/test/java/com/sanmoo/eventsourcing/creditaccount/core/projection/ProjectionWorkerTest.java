@@ -2,9 +2,11 @@ package com.sanmoo.eventsourcing.creditaccount.core.projection;
 
 import com.sanmoo.eventsourcing.creditaccount.core.port.CreditAccountSummaryRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventRepository;
+import com.sanmoo.eventsourcing.creditaccount.core.port.ProjectionCheckpointRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.TransactionRunner;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
+import com.sanmoo.eventsourcing.creditaccount.core.port.model.ProjectionCheckpoint;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,8 @@ class ProjectionWorkerTest {
                 return action.get();
             }
         };
+        ProjectionGating gating = new ProjectionGating();
+        ProjectionCheckpointRepository checkpointRepo = mock(ProjectionCheckpointRepository.class);
 
         UUID accountId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
@@ -41,14 +45,16 @@ class ProjectionWorkerTest {
 
         when(outbox.findPending(10)).thenReturn(List.of(event));
         when(summaries.findById(CreditAccountId.of(accountId))).thenReturn(Optional.empty());
+        when(checkpointRepo.find(anyString(), anyString(), anyString())).thenReturn(Optional.empty());
 
-        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, transactionRunner);
+        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, transactionRunner, gating, checkpointRepo);
         int processed = worker.processOnce(10);
 
         assertThat(processed).isEqualTo(1);
         ArgumentCaptor<CreditAccountSummary> captor = ArgumentCaptor.forClass(CreditAccountSummary.class);
         verify(summaries).upsert(captor.capture());
         assertThat(captor.getValue().creditAccountId()).isEqualTo(accountId);
+        verify(checkpointRepo).upsert(any(ProjectionCheckpoint.class));
         verify(outbox).markProcessed(eventId);
     }
 
@@ -63,6 +69,8 @@ class ProjectionWorkerTest {
                 return action.get();
             }
         };
+        ProjectionGating gating = mock(ProjectionGating.class);
+        ProjectionCheckpointRepository checkpointRepo = mock(ProjectionCheckpointRepository.class);
 
         UUID accountId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
@@ -72,9 +80,10 @@ class ProjectionWorkerTest {
 
         when(outbox.findPending(10)).thenReturn(List.of(event));
         when(summaries.findById(any())).thenReturn(Optional.empty());
-        when(projector.project(any(), any())).thenThrow(new RuntimeException("boom"));
+        when(checkpointRepo.find(anyString(), anyString(), anyString())).thenReturn(Optional.empty());
+        when(gating.decide(anyString(), any(), any())).thenThrow(new RuntimeException("boom"));
 
-        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, transactionRunner);
+        ProjectionWorker worker = new ProjectionWorker(outbox, summaries, projector, transactionRunner, gating, checkpointRepo);
         int processed = worker.processOnce(10);
 
         assertThat(processed).isEqualTo(0);

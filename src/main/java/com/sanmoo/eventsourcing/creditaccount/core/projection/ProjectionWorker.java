@@ -2,9 +2,11 @@ package com.sanmoo.eventsourcing.creditaccount.core.projection;
 
 import com.sanmoo.eventsourcing.creditaccount.core.port.CreditAccountSummaryRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventRepository;
+import com.sanmoo.eventsourcing.creditaccount.core.port.ProjectionCheckpointRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.TransactionRunner;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
+import com.sanmoo.eventsourcing.creditaccount.core.port.model.ProjectionCheckpoint;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,10 +19,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ProjectionWorker {
 
+    private static final String PROJECTION_NAME = "credit-account-summary";
+
     private final OutboxEventRepository outbox;
     private final CreditAccountSummaryRepository summaries;
     private final CreditAccountSummaryProjector projector;
     private final TransactionRunner transactionRunner;
+    private final ProjectionGating gating;
+    private final ProjectionCheckpointRepository checkpointRepo;
 
     public int processOnce(int batchSize) {
         List<OutboxEvent> pending = outbox.findPending(batchSize);
@@ -40,24 +46,42 @@ public class ProjectionWorker {
     }
 
     public void processOne(OutboxEvent event) {
-        CreditAccountId id = CreditAccountId.of(UUID.fromString(event.aggregateId()));
-        Optional<CreditAccountSummary> current = summaries.findById(id);
-        ProjectionTick tick = projector.project(event, current);
-        if (!tick.applied() || tick.summary() == null) {
+        String aggregateId = event.aggregateId();
+        String aggregateType = event.aggregateType();
+
+        Optional<ProjectionCheckpoint> checkpoint = checkpointRepo.find(PROJECTION_NAME, aggregateType, aggregateId);
+        ProjectionGatingResult result = gating.decide(PROJECTION_NAME, event, checkpoint);
+
+        if (result.decision() != ProjectionGatingResult.Decision.APPLY) {
             return;
         }
+
+        CreditAccountId id = CreditAccountId.of(UUID.fromString(aggregateId));
+        Optional<CreditAccountSummary> current = summaries.findById(id);
+        CreditAccountSummary base = current.orElseGet(() -> projector.emptySummary(event));
+        CreditAccountSummary next = projector.apply(event, base);
+
         CreditAccountSummary withEventId = new CreditAccountSummary(
-                tick.summary().creditAccountId(),
-                tick.summary().opened(),
-                tick.summary().creditLimit(),
-                tick.summary().outstandingBalance(),
-                tick.summary().authorizedAmount(),
-                tick.summary().availableLimit(),
-                tick.summary().authorizations(),
-                tick.summary().projectedVersion(),
+                next.creditAccountId(),
+                next.opened(),
+                next.creditLimit(),
+                next.outstandingBalance(),
+                next.authorizedAmount(),
+                next.availableLimit(),
+                next.authorizations(),
+                next.projectedVersion(),
                 event.eventId(),
-                tick.summary().updatedAt());
+                next.updatedAt());
         summaries.upsert(withEventId);
+
+        checkpointRepo.upsert(new ProjectionCheckpoint(
+                PROJECTION_NAME,
+                aggregateType,
+                aggregateId,
+                event.aggregateVersion(),
+                event.eventId(),
+                event.occurredAt()));
+
         outbox.markProcessed(event.eventId());
     }
 }
