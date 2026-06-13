@@ -2,7 +2,8 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.scheduler;
 
 import com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorker;
 import com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorkerResult;
-import org.springframework.beans.factory.annotation.Value;
+import com.sanmoo.eventsourcing.creditaccount.core.projection.StaleDeliveryRecovery;
+import com.sanmoo.eventsourcing.creditaccount.projection.ProjectionProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,25 +16,41 @@ public class OutboxProjectionWorkerRunner {
     private final LogAccessor log = new LogAccessor(OutboxProjectionWorkerRunner.class);
 
     private final ProjectionWorker worker;
-
+    private final StaleDeliveryRecovery recovery;
     private final int batchSize;
+    private final int staleRecoveryIntervalCycles;
+
+    private int cycle = 0;
 
     public OutboxProjectionWorkerRunner(ProjectionWorker worker,
-                                        @Value("${credit-account.projections.batch-size:50}") int batchSize) {
+                                        StaleDeliveryRecovery recovery,
+                                        ProjectionProperties properties,
+                                        @org.springframework.beans.factory.annotation.Value(
+                                                "${credit-account.projections.stale-recovery-interval-cycles:30}")
+                                        int staleRecoveryIntervalCycles) {
         this.worker = worker;
-        this.batchSize = batchSize;
+        this.recovery = recovery;
+        this.batchSize = properties.getBatchSize();
+        this.staleRecoveryIntervalCycles = staleRecoveryIntervalCycles;
     }
 
     @Scheduled(fixedDelayString = "${credit-account.projections.poll-interval:1s}")
     public void run() {
         try {
             ProjectionWorkerResult result = worker.processOnce(batchSize);
-            if (result.processed() > 0) {
-                log.debug(() -> "Projection worker processed " + result.processed()
-                        + " events (claimed=" + result.claimed()
-                        + ", blocked=" + result.blocked()
-                        + ", retried=" + result.retried()
-                        + ", failed=" + result.failed() + ")");
+            if (result.claimed() > 0) {
+                log.debug(() -> "Projection worker claimed " + result.claimed()
+                        + " processed=" + result.processed()
+                        + " blocked=" + result.blocked()
+                        + " retried=" + result.retried()
+                        + " failed=" + result.failed());
+            }
+            cycle++;
+            if (staleRecoveryIntervalCycles > 0 && cycle % staleRecoveryIntervalCycles == 0) {
+                int recovered = recovery.recover();
+                if (recovered > 0) {
+                    log.info(() -> "Recovered " + recovered + " stale outbox deliveries");
+                }
             }
         } catch (RuntimeException e) {
             log.error(e, "Projection worker tick failed");
