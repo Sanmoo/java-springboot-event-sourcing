@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/005-create-credit-account-summary.yaml
   - include:
       file: db/changelog/006-create-outbox-consumers.yaml
+  - include:
+      file: db/changelog/007-create-outbox-deliveries.yaml
