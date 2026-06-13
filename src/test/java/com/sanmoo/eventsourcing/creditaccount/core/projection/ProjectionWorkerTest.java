@@ -10,16 +10,15 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.ProjectionCheckpoint;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
+import com.sanmoo.eventsourcing.creditaccount.core.port.TransactionRunner;
 import com.sanmoo.eventsourcing.creditaccount.projection.ProjectionProperties;
 import org.junit.jupiter.api.Test;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -99,16 +98,12 @@ class ProjectionWorkerTest {
         verify(deliveries, never()).markProcessed(any(), anyString());
     }
 
-    private PlatformTransactionManager mockTx() {
-        return new PlatformTransactionManager() {
+    private TransactionRunner mockTx() {
+        return new TransactionRunner() {
             @Override
-            public TransactionStatus getTransaction(org.springframework.transaction.TransactionDefinition def) {
-                return new SimpleTransactionStatus();
+            public <T> T runInTransaction(Supplier<T> action) {
+                return action.get();
             }
-            @Override
-            public void commit(TransactionStatus status) {}
-            @Override
-            public void rollback(TransactionStatus status) {}
         };
     }
 }

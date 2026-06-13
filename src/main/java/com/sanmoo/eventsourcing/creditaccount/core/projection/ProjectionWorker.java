@@ -4,6 +4,7 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.CreditAccountSummaryRepo
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxDeliveryRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventLoader;
 import com.sanmoo.eventsourcing.creditaccount.core.port.ProjectionCheckpointRepository;
+import com.sanmoo.eventsourcing.creditaccount.core.port.TransactionRunner;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxDelivery;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
@@ -21,8 +22,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
 @RequiredArgsConstructor
@@ -37,10 +36,10 @@ public class ProjectionWorker {
     private final CreditAccountSummaryProjector projector;
     private final ProjectionGating gating;
     private final ProjectionProperties properties;
-    private final PlatformTransactionManager transactionManager;
+    private final TransactionRunner transactionRunner;
 
     public ProjectionWorkerResult processOnce(int batchSize) {
-        List<OutboxDelivery> claimed = new TransactionTemplate(transactionManager).execute(status ->
+        List<OutboxDelivery> claimed = transactionRunner.runInTransaction(() ->
                 deliveries.claimPending(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR,
                         properties.getWorkerId(), batchSize));
 
@@ -74,9 +73,8 @@ public class ProjectionWorker {
     }
 
     private ProjectionWorkerResult processOne(ProjectionWorkerResult result, OutboxDelivery delivery) {
-        TransactionTemplate tx = new TransactionTemplate(transactionManager);
         try {
-            return tx.execute(status -> processOneInTransaction(result, delivery));
+            return transactionRunner.runInTransaction(() -> processOneInTransaction(result, delivery));
         } catch (RuntimeException e) {
             return handleFailure(result, delivery, e);
         }
