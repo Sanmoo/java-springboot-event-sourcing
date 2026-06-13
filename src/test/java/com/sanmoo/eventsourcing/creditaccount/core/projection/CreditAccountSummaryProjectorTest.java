@@ -15,7 +15,6 @@ import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;

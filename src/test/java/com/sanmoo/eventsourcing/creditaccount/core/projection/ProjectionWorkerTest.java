@@ -307,7 +307,6 @@ class ProjectionWorkerTest {
         var eventLoader = mock(OutboxEventLoader.class);
         var projector = new CreditAccountSummaryProjector();
 
-        UUID aggregateId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
         var delivery = new OutboxDelivery(eventId, ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(),
                 OutboxDeliveryStatus.PROCESSING, 0, 10, Instant.now(), Instant.now(), "w",
