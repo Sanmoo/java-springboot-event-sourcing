@@ -385,6 +385,45 @@ WHERE d.event_id = e.event_id
 
 Only the immediate next version is unblocked. This preserves aggregate ordering.
 
+## Bounded same-aggregate drain
+
+A long `BLOCKED` chain can appear after an event stays `FAILED` for a while. Once the failed event is manually fixed and returned to `PENDING`, processing it unblocks only the next aggregate version. If the worker only waits for the next scheduled cycle, recovery advances one event per cycle for that aggregate.
+
+To avoid slow recovery, the worker should support a bounded same-aggregate drain after a successful projection.
+
+After processing aggregate version `N` and unblocking version `N + 1`, the worker may immediately try to claim the next pending delivery for the same consumer and aggregate:
+
+```text
+claimNextPendingForAggregate(
+  consumer_name,
+  aggregate_type,
+  aggregate_id,
+  expected_version = N + 1,
+  worker_id
+)
+```
+
+If found, the worker processes that delivery in its own transaction, then repeats the same step for the following version.
+
+This preserves aggregate ordering because it only claims the exact next version. It also improves operational recovery after manual retry of a failed event.
+
+The drain must be bounded so one aggregate cannot monopolize all worker time:
+
+```text
+max_consecutive_events_per_aggregate, e.g. 100
+max_drain_duration, e.g. 5 seconds
+```
+
+Stop draining when:
+
+- there is no next pending delivery for the aggregate;
+- the next version is still missing or blocked;
+- processing returns `BLOCKED`, `FAILED`, or retryable `PENDING`;
+- the consecutive event limit is reached;
+- the drain duration limit is reached.
+
+The normal batch claim still exists. Same-aggregate drain is an optimization after successful processing, not a replacement for regular polling.
+
 ## Retry and failure handling
 
 Retryable processing failures transition from `PROCESSING` back to `PENDING` while attempts remain.
@@ -499,6 +538,7 @@ Cover technical behavior in repository/worker tests:
 - idempotent duplicate marks delivery `PROCESSED` without reapplying;
 - gap marks delivery `BLOCKED`;
 - processing the missing version unblocks the next version;
+- after manual retry of a failed event, same-aggregate drain can process a bounded blocked chain without waiting one scheduler cycle per event;
 - retryable failure returns to `PENDING` with backoff;
 - exhausted attempts become `FAILED`;
 - stale `PROCESSING` deliveries recover to `PENDING`.
@@ -555,4 +595,5 @@ Approved design direction from discussion:
 - use both `outbox_deliveries` and `projection_checkpoints` from the start;
 - support concurrent workers with database row claiming;
 - use retry with bounded backoff;
-- avoid technical Gherkin scenarios for internal projection mechanics.
+- avoid technical Gherkin scenarios for internal projection mechanics;
+- add bounded same-aggregate drain so long blocked chains recover efficiently after the failed event is fixed.
