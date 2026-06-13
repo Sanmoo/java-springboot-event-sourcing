@@ -73,13 +73,13 @@ databaseChangeLog:
             tableName: outbox_deliveries
             columnNames: event_id, consumer_name
             constraintName: pk_outbox_deliveries
-        - addForeignKey:
+        - addForeignKeyConstraint:
             baseTableName: outbox_deliveries
             baseColumnNames: event_id
             referencedTableName: outbox_events
             referencedColumnNames: event_id
             constraintName: fk_outbox_deliveries_event
-        - addForeignKey:
+        - addForeignKeyConstraint:
             baseTableName: outbox_deliveries
             baseColumnNames: consumer_name
             referencedTableName: outbox_consumers
@@ -95,7 +95,5 @@ databaseChangeLog:
                   name: status
               - column:
                   name: next_attempt_at
-        - addCheckConstraint:
-            tableName: outbox_deliveries
-            constraintName: ck_outbox_deliveries_status
-            condition: status IN ('PENDING', 'PROCESSING', 'PROCESSED', 'BLOCKED', 'FAILED')
+        - sql:
+            sql: ALTER TABLE outbox_deliveries ADD CONSTRAINT ck_outbox_deliveries_status CHECK (status IN ('PENDING', 'PROCESSING', 'PROCESSED', 'BLOCKED', 'FAILED'))

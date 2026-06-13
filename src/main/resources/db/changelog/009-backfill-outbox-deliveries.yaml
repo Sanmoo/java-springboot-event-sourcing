@@ -4,7 +4,6 @@ databaseChangeLog:
       author: sanmoo
       changes:
         - sql:
-            comment: Backfill outbox_deliveries for existing outbox_events
             sql: |
               INSERT INTO outbox_deliveries (
                   event_id,
