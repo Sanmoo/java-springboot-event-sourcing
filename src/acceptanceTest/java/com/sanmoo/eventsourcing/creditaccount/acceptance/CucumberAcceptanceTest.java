@@ -13,5 +13,6 @@ import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
 @SelectClasspathResource("features")
 @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.sanmoo.eventsourcing.creditaccount.acceptance")
 @ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty,html:build/reports/cucumber.html")
+@SuppressWarnings("PMD.TestClassWithoutTestCases")
 public class CucumberAcceptanceTest {
 }

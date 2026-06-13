@@ -17,6 +17,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class CreditAccountStepDefinitions {
 
+    private static final Map<String, String> FIELD_MAPPING = new HashMap<>();
+    static {
+        FIELD_MAPPING.put("limite de crédito", "creditLimit");
+        FIELD_MAPPING.put("valor autorizado", "authorizedAmount");
+        FIELD_MAPPING.put("limite disponível", "availableLimit");
+        FIELD_MAPPING.put("saldo em aberto", "outstandingBalance");
+    }
+
     @Autowired
     private AcceptanceHttpClient http;
 
@@ -75,14 +83,6 @@ public class CreditAccountStepDefinitions {
         if (response != null && response.containsKey("projectedVersion")) {
             context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
         }
-    }
-
-    private static final Map<String, String> FIELD_MAPPING = new HashMap<>();
-    static {
-        FIELD_MAPPING.put("limite de crédito", "creditLimit");
-        FIELD_MAPPING.put("valor autorizado", "authorizedAmount");
-        FIELD_MAPPING.put("limite disponível", "availableLimit");
-        FIELD_MAPPING.put("saldo em aberto", "outstandingBalance");
     }
 
     @Então("eventualmente o resumo da conta deve mostrar:")

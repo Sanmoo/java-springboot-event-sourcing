@@ -40,7 +40,9 @@ public class AcceptanceHttpClient {
     private boolean initialized;
 
     private void ensureInitialized() {
-        if (initialized) return;
+        if (initialized) {
+            return;
+        }
         this.rest = new RestTemplate();
         this.rest.setErrorHandler((ClientHttpResponse response) -> false);
         int port = environment.getRequiredProperty("local.server.port", Integer.class);
