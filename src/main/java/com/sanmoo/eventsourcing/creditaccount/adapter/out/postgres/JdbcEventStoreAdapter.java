@@ -4,7 +4,9 @@ import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictExce
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
+import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxDeliveryRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
+import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,7 +15,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -21,7 +23,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@RequiredArgsConstructor
 public class JdbcEventStoreAdapter implements EventStore {
 
     private static final String LOAD_EVENTS_SQL = """
@@ -45,7 +46,21 @@ public class JdbcEventStoreAdapter implements EventStore {
     private final JdbcTemplate jdbcTemplate;
     private final EventTypeMapper eventTypeMapper;
     private final UniqueIdGenerator uniqueIdGenerator;
+    private final OutboxDeliveryRepository deliveryRepository;
+    private final int defaultMaxAttempts;
     private final RowMapper<EventEnvelope> rowMapper = (rs, rowNum) -> mapEventEnvelope(rs);
+
+    public JdbcEventStoreAdapter(JdbcTemplate jdbcTemplate,
+                                  EventTypeMapper eventTypeMapper,
+                                  UniqueIdGenerator uniqueIdGenerator,
+                                  OutboxDeliveryRepository deliveryRepository,
+                                  @Value("${credit-account.projections.max-attempts:10}") int defaultMaxAttempts) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.eventTypeMapper = eventTypeMapper;
+        this.uniqueIdGenerator = uniqueIdGenerator;
+        this.deliveryRepository = deliveryRepository;
+        this.defaultMaxAttempts = defaultMaxAttempts;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -68,6 +83,9 @@ public class JdbcEventStoreAdapter implements EventStore {
 
                 insertEventRow(INSERT_EVENT_SQL, eventId, aggregateType, aggregateId, version, eventType, payload, metadataJson, occurredAt);
                 insertEventRow(INSERT_OUTBOX_SQL, eventId, aggregateType, aggregateId, version, eventType, payload, metadataJson, occurredAt);
+
+                OutboxEvent outboxEvent = new OutboxEvent(eventId, aggregateType, aggregateId, version, eventType, event, metadata, occurredAt);
+                deliveryRepository.insertDeliveriesForEvent(outboxEvent, defaultMaxAttempts);
             }
             return new AppendResult(version);
         } catch (DataIntegrityViolationException e) {

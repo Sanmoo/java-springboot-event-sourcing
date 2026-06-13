@@ -54,6 +54,7 @@ class JdbcEventStoreAdapterIT {
 
     @BeforeEach
     void resetTestState() {
+        jdbcTemplate.update("DELETE FROM outbox_deliveries");
         jdbcTemplate.update("DELETE FROM outbox_events");
         jdbcTemplate.update("DELETE FROM event_store");
         RecordingUniqueIdGenerator.clear();
