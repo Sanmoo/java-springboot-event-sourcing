@@ -1,7 +1,15 @@
 package com.sanmoo.eventsourcing.creditaccount.core.projection;
 
-public final class ConsumerNames {
-    public static final String CREDIT_ACCOUNT_SUMMARY_PROJECTOR = "credit-account-summary-projector";
+public enum ConsumerNames {
+    CREDIT_ACCOUNT_SUMMARY_PROJECTOR("credit-account-summary-projector");
 
-    private ConsumerNames() {}
+    private final String name;
+
+    ConsumerNames(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
 }

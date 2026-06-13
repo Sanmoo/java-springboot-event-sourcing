@@ -40,11 +40,11 @@ class ProjectionWorkerTest {
                 "CreditAccountOpened",
                 new CreditAccountOpened(CreditAccountId.of(aggregateId), Instant.now()),
                 java.util.Map.of(), Instant.now());
-        var delivery = new OutboxDelivery(eventId, ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR,
+        var delivery = new OutboxDelivery(eventId, ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(),
                 OutboxDeliveryStatus.PROCESSING, 0, 10, Instant.now(), Instant.now(), "w",
                 null, null, null, null, null, Instant.now(), Instant.now());
 
-        when(deliveries.claimPending(eq(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR), anyString(), anyInt()))
+        when(deliveries.claimPending(eq(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName()), anyString(), anyInt()))
                 .thenReturn(List.of(delivery));
         when(eventLoader.findById(eventId)).thenReturn(Optional.of(event));
         when(checkpoints.find(anyString(), anyString(), anyString())).thenReturn(Optional.empty());
@@ -57,7 +57,7 @@ class ProjectionWorkerTest {
 
         ProjectionWorkerResult result = worker.processOnce(10);
         assertThat(result.processed()).isEqualTo(1);
-        verify(deliveries).markProcessed(eventId, ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR);
+        verify(deliveries).markProcessed(eventId, ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName());
         verify(checkpoints).upsert(any(ProjectionCheckpoint.class));
         verify(summaries).upsert(any(CreditAccountSummary.class));
     }
@@ -76,15 +76,15 @@ class ProjectionWorkerTest {
                 "CreditAccountOpened",
                 new CreditAccountOpened(CreditAccountId.of(aggregateId), Instant.now()),
                 java.util.Map.of(), Instant.now());
-        var delivery = new OutboxDelivery(eventId, ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR,
+        var delivery = new OutboxDelivery(eventId, ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(),
                 OutboxDeliveryStatus.PROCESSING, 0, 10, Instant.now(), Instant.now(), "w",
                 null, null, null, null, null, Instant.now(), Instant.now());
 
-        when(deliveries.claimPending(eq(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR), anyString(), anyInt()))
+        when(deliveries.claimPending(eq(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName()), anyString(), anyInt()))
                 .thenReturn(List.of(delivery));
         when(eventLoader.findById(eventId)).thenReturn(Optional.of(event));
         when(checkpoints.find(anyString(), anyString(), anyString()))
-                .thenReturn(Optional.of(new ProjectionCheckpoint(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR,
+                .thenReturn(Optional.of(new ProjectionCheckpoint(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(),
                         "CreditAccount", aggregateId.toString(), 1L, UUID.randomUUID(), Instant.now())));
 
         var props = new ProjectionProperties();
@@ -94,7 +94,7 @@ class ProjectionWorkerTest {
 
         ProjectionWorkerResult result = worker.processOnce(10);
         assertThat(result.blocked()).isEqualTo(1);
-        verify(deliveries).markBlocked(eq(eventId), eq(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR), anyString());
+        verify(deliveries).markBlocked(eq(eventId), eq(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName()), anyString());
         verify(deliveries, never()).markProcessed(any(), anyString());
     }
 

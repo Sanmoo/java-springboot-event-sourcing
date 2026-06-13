@@ -4,13 +4,13 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.CreditAccountSummaryRepo
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxDeliveryRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.OutboxEventLoader;
 import com.sanmoo.eventsourcing.creditaccount.core.port.ProjectionCheckpointRepository;
+import com.sanmoo.eventsourcing.creditaccount.core.port.ProjectionConfig;
 import com.sanmoo.eventsourcing.creditaccount.core.port.TransactionRunner;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxDelivery;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.ProjectionCheckpoint;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
-import com.sanmoo.eventsourcing.creditaccount.projection.ProjectionProperties;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -35,12 +35,12 @@ public class ProjectionWorker {
     private final OutboxEventLoader eventLoader;
     private final CreditAccountSummaryProjector projector;
     private final ProjectionGating gating;
-    private final ProjectionProperties properties;
+    private final ProjectionConfig properties;
     private final TransactionRunner transactionRunner;
 
     public ProjectionWorkerResult processOnce(int batchSize) {
         List<OutboxDelivery> claimed = transactionRunner.runInTransaction(() ->
-                deliveries.claimPending(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR,
+                deliveries.claimPending(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(),
                         properties.getWorkerId(), batchSize));
 
         if (claimed == null || claimed.isEmpty()) {
@@ -83,11 +83,11 @@ public class ProjectionWorker {
     private ProjectionWorkerResult processOneInTransaction(ProjectionWorkerResult result, OutboxDelivery delivery) {
         OutboxEvent event = loadEvent(delivery.eventId());
         Optional<ProjectionCheckpoint> cp = checkpoints.find(
-                ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR,
+                ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(),
                 event.aggregateType(), event.aggregateId());
 
         ProjectionGatingResult gatingResult = gating.decide(
-                ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR, event, cp);
+                ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(), event, cp);
 
         return switch (gatingResult.decision()) {
             case BLOCKED -> {
@@ -124,7 +124,7 @@ public class ProjectionWorker {
         summaries.upsert(withEventId);
 
         checkpoints.upsert(new ProjectionCheckpoint(
-                ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR,
+                ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(),
                 event.aggregateType(), event.aggregateId(),
                 event.aggregateVersion(), event.eventId(), Instant.now()));
 

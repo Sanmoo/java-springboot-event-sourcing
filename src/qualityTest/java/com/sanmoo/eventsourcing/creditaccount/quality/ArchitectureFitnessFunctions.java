@@ -28,7 +28,8 @@ public class ArchitectureFitnessFunctions {
                     "org.springframework.stereotype..",
                     "tools.jackson..",  // required for idempotency serialization; consider extracting serialization port
                     "org.springframework.stereotype..",  // use cases are Spring-discovered application services
-                    "org.springframework.transaction.annotation.."  // @Transactional for idempotent execution
+                    "org.springframework.transaction.annotation..",  // @Transactional for idempotent execution
+                    "org.slf4j.."
             )
             .because("core must not depend on inbound or outbound adapters");
 

@@ -51,6 +51,7 @@ public class DesignRulesFitnessFunctions {
     private static final ArchRule no_public_fields_in_non_record_classes = fields()
             .that().areDeclaredInClassesThat().areNotRecords()
             .and().areDeclaredInClassesThat().areNotEnums()
+            .and().areDeclaredInClassesThat().areNotAnonymousClasses()
             .should().bePrivate()
             .because("encapsulation: non-record classes should not expose fields directly");
 }
