@@ -152,8 +152,6 @@ public class CreditAccountUseCaseSupport {
         }
     }
 
-
-
     private String serializeResult(ExecutionResult result) {
         return serializeResponseResult(result, result.output());
     }
