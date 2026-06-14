@@ -76,17 +76,6 @@ public class CreditAccountUseCaseSupport {
         return outputMapper.apply(result);
     }
 
-    public CreditAccountOutput loadAccountOutput(CreditAccountId creditAccountId) {
-        String aggregateId = creditAccountId.value().toString();
-        List<CreditAccountEvent> history = loadHistory(aggregateId);
-        CreditAccount account = CreditAccount.rehydrate(creditAccountId, history);
-        if (!account.snapshot().opened()) {
-            throw new com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotFoundException(
-                    "Credit account not found: " + aggregateId);
-        }
-        return buildOutput(account, account.version());
-    }
-
     private ExecutionResult execute(String aggregateId, CreditAccountId creditAccountId, CommandExecutor executor, String idempotencyKey, String commandType, String requestHash) {
         List<CreditAccountEvent> history = loadHistory(aggregateId);
         CreditAccount account = CreditAccount.rehydrate(creditAccountId, history);

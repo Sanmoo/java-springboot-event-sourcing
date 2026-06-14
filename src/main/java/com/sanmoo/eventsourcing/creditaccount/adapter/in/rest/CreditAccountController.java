@@ -133,14 +133,13 @@ public class CreditAccountController {
         var items = output.items().stream()
                 .map(this::toMap)
                 .toList();
-        var response = new PageResponse(
+        return ResponseEntity.ok(new PageResponse(
                 items,
                 output.page(),
                 output.size(),
                 output.totalItems(),
                 output.totalPages()
-        );
-        return ResponseEntity.ok(response);
+        ));
     }
 
     private Map<String, Object> toMap(CreditAccountOutput output) {
