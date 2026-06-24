@@ -9,6 +9,7 @@
         <Bug pattern="EI_EXPOSE_REP"/>
         <Or>
             <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.PageResponse"/>
+            <Class name="com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.CreditAccountResponse"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummaryPage"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent"/>

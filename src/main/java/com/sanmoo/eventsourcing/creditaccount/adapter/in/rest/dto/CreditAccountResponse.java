@@ -12,4 +12,9 @@ public record CreditAccountResponse(
         Long projectedVersion,
         List<AuthorizationResponse> authorizations
 ) {
+    public CreditAccountResponse {
+        if (authorizations != null) {
+            authorizations = List.copyOf(authorizations);
+        }
+    }
 }
