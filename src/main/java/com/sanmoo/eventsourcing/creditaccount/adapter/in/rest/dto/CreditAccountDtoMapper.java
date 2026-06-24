@@ -3,8 +3,6 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.CreditAccountOutput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.PurchaseAuthorizationOutput;
 
-import java.util.List;
-
 public final class CreditAccountDtoMapper {
 
     private CreditAccountDtoMapper() {
