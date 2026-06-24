@@ -2,6 +2,9 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
 import com.sanmoo.eventsourcing.creditaccount.CreditAccountApplication;
 import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.CreditAccountResponse;
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.PageResponse;
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ProjectionNotReadyResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcEventStoreAdapter;
 import com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorker;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
@@ -54,7 +57,7 @@ class CreditAccountControllerListIT {
     void getById_returns404_whenSummaryMissing() {
         UUID id = UUID.randomUUID();
         try {
-            rest.getForEntity(url("/credit-accounts/" + id), Map.class);
+            rest.getForEntity(url("/credit-accounts/" + id), CreditAccountResponse.class);
         } catch (HttpClientErrorException.NotFound e) {
             assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
@@ -69,10 +72,10 @@ class CreditAccountControllerListIT {
                 List.of(new CreditLimitAssigned(CreditAccountId.of(id), Money.of("1000.00"), Instant.now())), Map.of());
         projectionWorker.processOnce(50);
 
-        ResponseEntity<Map> response = rest.getForEntity(url("/credit-accounts/" + id), Map.class);
+        ResponseEntity<CreditAccountResponse> response = rest.getForEntity(url("/credit-accounts/" + id), CreditAccountResponse.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("creditAccountId", id.toString());
-        assertThat(response.getBody()).containsEntry("projectedVersion", 2);
+        assertThat(response.getBody().creditAccountId()).isEqualTo(id.toString());
+        assertThat(response.getBody().projectedVersion()).isEqualTo(2L);
     }
 
     @Test
@@ -81,15 +84,18 @@ class CreditAccountControllerListIT {
         eventStoreAdapter.appendEvents("CreditAccount", id.toString(), 0,
                 List.of(new CreditAccountOpened(CreditAccountId.of(id), Instant.now())), Map.of());
 
-        ResponseEntity<Map> response = rest.getForEntity(url("/credit-accounts/" + id + "?minVersion=5"), Map.class);
+        ResponseEntity<ProjectionNotReadyResponse> response = rest.getForEntity(
+                url("/credit-accounts/" + id + "?minVersion=5"),
+                ProjectionNotReadyResponse.class
+        );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        assertThat((Integer) response.getBody().get("requiredVersion")).isEqualTo(5);
+        assertThat(response.getBody().requiredVersion()).isEqualTo(5L);
     }
 
     @Test
     void list_returns400_whenSizeAboveMax() {
         try {
-            rest.getForEntity(url("/credit-accounts?size=200"), Map.class);
+            rest.getForEntity(url("/credit-accounts?size=200"), PageResponse.class);
         } catch (HttpClientErrorException.BadRequest e) {
             assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         }
@@ -102,10 +108,10 @@ class CreditAccountControllerListIT {
                 List.of(new CreditAccountOpened(CreditAccountId.of(id), Instant.now())), Map.of());
         projectionWorker.processOnce(50);
 
-        ResponseEntity<Map> response = rest.getForEntity(url("/credit-accounts"), Map.class);
+        ResponseEntity<PageResponse> response = rest.getForEntity(url("/credit-accounts"), PageResponse.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        List<Map<String, Object>> items = (List<Map<String, Object>>) response.getBody().get("items");
+        List<CreditAccountResponse> items = response.getBody().items();
         assertThat(items).isNotEmpty();
-        assertThat(items).anyMatch(item -> id.toString().equals(item.get("creditAccountId")));
+        assertThat(items).anyMatch(item -> id.toString().equals(item.creditAccountId()));
     }
 }
