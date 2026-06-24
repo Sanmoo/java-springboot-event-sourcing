@@ -1,6 +1,8 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
 import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.AuthorizePurchaseResponse;
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.CreditAccountResponse;
 import com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,16 +49,16 @@ class CreditAccountControllerIT {
         var openResponse = restTemplate.postForEntity(
                 baseUrl,
                 createRequest(null),
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(openResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        String accountId = (String) openResponse.getBody().get("creditAccountId");
+        String accountId = openResponse.getBody().creditAccountId();
 
         // 2. POST /credit-accounts/{id}/credit-limit
         var limitResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/credit-limit",
                 new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()),
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -69,10 +71,10 @@ class CreditAccountControllerIT {
                         "amount", "100.00",
                         "merchantName", "Store"
                 ), createHeaders()),
-                Map.class
+                AuthorizePurchaseResponse.class
         );
         assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(authResponse.getBody()).containsEntry("authorizationId", authorizationId);
+        assertThat(authResponse.getBody().authorizationId()).isEqualTo(authorizationId);
 
         // Project events before reading summary
         projectionWorker.processOnce(50);
@@ -80,16 +82,16 @@ class CreditAccountControllerIT {
         // 4. GET /credit-accounts/{id} (verify available limit decreased)
         var getAfterAuth = restTemplate.getForEntity(
                 baseUrl + "/" + accountId,
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(getAfterAuth.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(getAfterAuth.getBody()).containsEntry("availableLimit", "400.00");
+        assertThat(getAfterAuth.getBody().availableLimit()).isEqualTo("400.00");
 
         // 5. POST capture
         var captureResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
                 createRequest(null),
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(captureResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -99,16 +101,16 @@ class CreditAccountControllerIT {
         // 6. GET check outstanding balance
         var getAfterCapture = restTemplate.getForEntity(
                 baseUrl + "/" + accountId,
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(getAfterCapture.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(getAfterCapture.getBody()).containsEntry("outstandingBalance", "100.00");
+        assertThat(getAfterCapture.getBody().outstandingBalance()).isEqualTo("100.00");
 
         // 7. POST payment
         var paymentResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/payments",
                 new HttpEntity<>(Map.of("amount", "50.00"), createHeaders()),
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(paymentResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -118,22 +120,22 @@ class CreditAccountControllerIT {
         // 8. GET check outstanding balance reduced
         var getAfterPayment = restTemplate.getForEntity(
                 baseUrl + "/" + accountId,
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(getAfterPayment.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(getAfterPayment.getBody()).containsEntry("outstandingBalance", "50.00");
+        assertThat(getAfterPayment.getBody().outstandingBalance()).isEqualTo("50.00");
     }
 
     @Test
     void authorizesAndReleasesUsingReturnedAuthorizationId() {
-        var openResponse = restTemplate.postForEntity(baseUrl, createRequest(null), Map.class);
+        var openResponse = restTemplate.postForEntity(baseUrl, createRequest(null), CreditAccountResponse.class);
         assertThat(openResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        String accountId = (String) openResponse.getBody().get("creditAccountId");
+        String accountId = openResponse.getBody().creditAccountId();
 
         var limitResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/credit-limit",
                 new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()),
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -145,25 +147,25 @@ class CreditAccountControllerIT {
                         "amount", "100.00",
                         "merchantName", "Store"
                 ), createHeaders()),
-                Map.class
+                AuthorizePurchaseResponse.class
         );
         assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(authResponse.getBody()).containsEntry("authorizationId", authorizationId);
+        assertThat(authResponse.getBody().authorizationId()).isEqualTo(authorizationId);
 
         var releaseResponse = restTemplate.postForEntity(
                 baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/release",
                 createRequest(null),
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(releaseResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // Project events before reading summary
         projectionWorker.processOnce(50);
 
-        var getAfterRelease = restTemplate.getForEntity(baseUrl + "/" + accountId, Map.class);
+        var getAfterRelease = restTemplate.getForEntity(baseUrl + "/" + accountId, CreditAccountResponse.class);
         assertThat(getAfterRelease.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(getAfterRelease.getBody()).containsEntry("authorizedAmount", "0.00");
-        assertThat(getAfterRelease.getBody()).containsEntry("availableLimit", "500.00");
+        assertThat(getAfterRelease.getBody().authorizedAmount()).isEqualTo("0.00");
+        assertThat(getAfterRelease.getBody().availableLimit()).isEqualTo("500.00");
     }
 
     @Test
@@ -192,7 +194,7 @@ class CreditAccountControllerIT {
         var response1 = restTemplate.postForEntity(
                 baseUrl,
                 request,
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(response1.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
@@ -200,7 +202,7 @@ class CreditAccountControllerIT {
         var response2 = restTemplate.postForEntity(
                 baseUrl,
                 request,
-                Map.class
+                CreditAccountResponse.class
         );
         assertThat(response2.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response2.getBody()).isEqualTo(response1.getBody());
