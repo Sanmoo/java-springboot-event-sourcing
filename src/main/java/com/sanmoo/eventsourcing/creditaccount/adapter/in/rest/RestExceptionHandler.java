@@ -1,5 +1,6 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ErrorResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ProjectionNotReadyResponse;
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
@@ -14,39 +15,37 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.Map;
-
 @RestControllerAdvice
 public class RestExceptionHandler {
 
   @ExceptionHandler(AccountAlreadyExistsException.class)
-  public ResponseEntity<Map<String, String>> handleAccountAlreadyExists(AccountAlreadyExistsException ex) {
+  public ResponseEntity<ErrorResponse> handleAccountAlreadyExists(AccountAlreadyExistsException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(Map.of("error", ex.getMessage()));
+        .body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(IdempotencyConflictException.class)
-  public ResponseEntity<Map<String, String>> handleIdempotencyConflict(IdempotencyConflictException ex) {
+  public ResponseEntity<ErrorResponse> handleIdempotencyConflict(IdempotencyConflictException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(Map.of("error", ex.getMessage()));
+        .body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(ConcurrencyConflictException.class)
-  public ResponseEntity<Map<String, String>> handleConcurrencyConflict(ConcurrencyConflictException ex) {
+  public ResponseEntity<ErrorResponse> handleConcurrencyConflict(ConcurrencyConflictException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(Map.of("error", ex.getMessage()));
+        .body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(AccountNotFoundException.class)
-  public ResponseEntity<Map<String, String>> handleAccountNotFound(AccountNotFoundException ex) {
+  public ResponseEntity<ErrorResponse> handleAccountNotFound(AccountNotFoundException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(Map.of("error", ex.getMessage()));
+        .body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(SummaryNotFoundException.class)
-  public ResponseEntity<Map<String, String>> handleSummaryNotFound(SummaryNotFoundException ex) {
+  public ResponseEntity<ErrorResponse> handleSummaryNotFound(SummaryNotFoundException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(Map.of("error", ex.getMessage()));
+        .body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(ProjectionNotReadyException.class)
@@ -61,14 +60,14 @@ public class RestExceptionHandler {
   }
 
   @ExceptionHandler(InvalidPageSizeException.class)
-  public ResponseEntity<Map<String, String>> handleInvalidPageSize(InvalidPageSizeException ex) {
+  public ResponseEntity<ErrorResponse> handleInvalidPageSize(InvalidPageSizeException ex) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(Map.of("error", ex.getMessage()));
+        .body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(DomainException.class)
-  public ResponseEntity<Map<String, String>> handleDomainException(DomainException ex) {
+  public ResponseEntity<ErrorResponse> handleDomainException(DomainException ex) {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
-        .body(Map.of("error", ex.getMessage()));
+        .body(new ErrorResponse(ex.getMessage()));
   }
 }
