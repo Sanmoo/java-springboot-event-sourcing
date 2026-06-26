@@ -20,6 +20,12 @@
         </Or>
     </Match>
 
+    <!-- Test records expose their components by design — expected behavior -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="com.sanmoo.eventsourcing.creditaccount.concurrency.ConcurrentCommandResult"/>
+    </Match>
+
     <!-- Records store mutable constructor arguments by design — expected behavior -->
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
@@ -33,6 +39,12 @@
             <Class name="com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ListCreditAccountsOutput"/>
             <Class name="com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountSnapshot"/>
         </Or>
+    </Match>
+
+    <!-- Test records store mutable constructor arguments by design -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="com.sanmoo.eventsourcing.creditaccount.concurrency.ConcurrentCommandResult"/>
     </Match>
 
     <!-- Spring beans store injected dependencies without defensive copy — standard practice -->
