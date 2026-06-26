@@ -76,7 +76,7 @@ public final class ConcurrentCommandHarness implements AutoCloseable {
             } catch (ConcurrencyConflictException e) {
                 Thread.sleep(10L);
             } catch (Exception e) {
-                return null;
+                throw new RuntimeException("Unexpected error during retry of command", e);
             }
         }
         return null;
