@@ -88,4 +88,43 @@ class CreditAccountUseCaseConcurrencyIT {
         var result = getCreditAccountUseCase.execute(new GetCreditAccountInput(accountId, null));
         assertThat(result.account().creditLimit()).isEqualTo("1000.00");
     }
+
+    private Callable<CreditAccountOutput> authorize(String idempotencyKey, String authorizationId, String amount) {
+        return () -> authorizePurchaseUseCase.execute(new AuthorizePurchaseInput(
+                idempotencyKey,
+                accountId,
+                AuthorizationId.of(UUID.fromString(authorizationId)),
+                Money.of(amount),
+                "Merchant"
+        )).account();
+    }
+
+    @Test
+    void concurrent_authorizations_on_same_aggregate_eventually_succeed() throws Exception {
+        int commandCount = 5;
+        var commands = new java.util.ArrayList<Callable<CreditAccountOutput>>();
+        for (int i = 0; i < commandCount; i++) {
+            commands.add(authorize(
+                    "auth-key-" + i + "-" + UUID.randomUUID(),
+                    "018f5f4b-6a3c-7000-8000-%012d".formatted(i + 1),
+                    "100.00"
+            ));
+        }
+
+        try (var harness = new ConcurrentCommandHarness(commandCount)) {
+            ConcurrentCommandResult<CreditAccountOutput> result = harness.runConcurrently(commands, 10);
+
+            assertThat(result.successfulResults()).hasSize(commandCount);
+            assertThat(result.retryCount()).isEqualTo(result.conflictCount());
+
+            projectionWorker.processOnce(250);
+
+            var finalAccount = getCreditAccountUseCase.execute(new GetCreditAccountInput(accountId, null));
+            assertThat(finalAccount.account().authorizedAmount()).isEqualTo("500.00");
+            assertThat(finalAccount.account().availableLimit()).isEqualTo("500.00");
+            assertThat(new BigDecimal(finalAccount.account().authorizedAmount())
+                    .add(new BigDecimal(finalAccount.account().outstandingBalance())))
+                    .isLessThanOrEqualTo(new BigDecimal("1000.00"));
+        }
+    }
 }
