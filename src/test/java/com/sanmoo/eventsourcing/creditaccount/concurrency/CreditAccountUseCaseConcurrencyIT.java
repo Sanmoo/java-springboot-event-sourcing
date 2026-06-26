@@ -19,10 +19,12 @@ import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.GetCreditAccountI
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.OpenCreditAccountInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReceivePaymentInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReleasePurchaseAuthorizationInput;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.AuthorizationNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import org.junit.jupiter.api.BeforeEach;
@@ -125,6 +127,43 @@ class CreditAccountUseCaseConcurrencyIT {
             assertThat(new BigDecimal(finalAccount.account().authorizedAmount())
                     .add(new BigDecimal(finalAccount.account().outstandingBalance())))
                     .isLessThanOrEqualTo(new BigDecimal("1000.00"));
+        }
+    }
+
+    @Test
+    void concurrent_authorization_and_capture_eventually_leaves_captured_state() throws Exception {
+        String authorizationId = "018f5f4b-6a3c-7000-8000-000000000999";
+
+        Callable<CreditAccountOutput> authorizeCommand = authorize(
+                "auth-capture-key-auth", authorizationId, "150.00");
+        Callable<CreditAccountOutput> captureCommand = () -> {
+            Exception lastError = null;
+            for (int i = 0; i < 20; i++) {
+                try {
+                    return capturePurchaseUseCase.execute(new CapturePurchaseInput(
+                            "auth-capture-key-capture",
+                            accountId,
+                            AuthorizationId.of(UUID.fromString(authorizationId))
+                    )).account();
+                } catch (AuthorizationNotFoundException e) {
+                    lastError = e;
+                    Thread.sleep(50);
+                }
+            }
+            throw new RuntimeException("Capture failed after retries", lastError);
+        };
+
+        try (var harness = new ConcurrentCommandHarness(2)) {
+            ConcurrentCommandResult<CreditAccountOutput> result = harness.runConcurrently(
+                    List.of(authorizeCommand, captureCommand), 10);
+
+            assertThat(result.successfulResults()).hasSize(2);
+
+            projectionWorker.processOnce(250);
+
+            var finalAccount = getCreditAccountUseCase.execute(new GetCreditAccountInput(accountId, null));
+            assertThat(finalAccount.account().outstandingBalance()).isEqualTo("150.00");
+            assertThat(finalAccount.account().authorizedAmount()).isEqualTo("0.00");
         }
     }
 }
