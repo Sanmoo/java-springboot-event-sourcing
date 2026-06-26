@@ -9,6 +9,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -55,11 +56,11 @@ public class AcceptanceHttpClient {
     public Map<String, Object> openAccount() {
         ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
-        ResponseEntity<Map> response = rest.exchange(
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
                 baseUrl,
                 HttpMethod.POST,
                 new HttpEntity<>(Map.of(), headers),
-                Map.class
+                new ParameterizedTypeReference<>() {}
         );
         context.setLastResponse(response);
         return response.getBody();
@@ -68,11 +69,11 @@ public class AcceptanceHttpClient {
     public Map<String, Object> assignCreditLimit(UUID accountId, String limit) {
         ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
-        ResponseEntity<Map> response = rest.exchange(
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
                 baseUrl + "/" + accountId + "/credit-limit",
                 HttpMethod.POST,
                 new HttpEntity<>(Map.of("limit", limit), headers),
-                Map.class
+                new ParameterizedTypeReference<>() {}
         );
         context.setLastResponse(response);
         return response.getBody();
@@ -82,7 +83,7 @@ public class AcceptanceHttpClient {
         ensureInitialized();
         UUID authorizationId = UUID.randomUUID();
         HttpHeaders headers = headersWithIdempotencyKey();
-        ResponseEntity<Map> response = rest.exchange(
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
                 baseUrl + "/" + accountId + "/purchases/authorizations",
                 HttpMethod.POST,
                 new HttpEntity<>(Map.of(
@@ -90,7 +91,7 @@ public class AcceptanceHttpClient {
                         "amount", amount,
                         "merchantName", merchantName
                 ), headers),
-                Map.class
+                new ParameterizedTypeReference<>() {}
         );
         context.setLastResponse(response);
         return response.getBody();
@@ -99,11 +100,11 @@ public class AcceptanceHttpClient {
     public Map<String, Object> capturePurchase(UUID accountId, UUID authorizationId) {
         ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
-        ResponseEntity<Map> response = rest.exchange(
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
                 baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
                 HttpMethod.POST,
                 new HttpEntity<>(Map.of(), headers),
-                Map.class
+                new ParameterizedTypeReference<>() {}
         );
         context.setLastResponse(response);
         return response.getBody();
@@ -112,11 +113,11 @@ public class AcceptanceHttpClient {
     public Map<String, Object> receivePayment(UUID accountId, String amount) {
         ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
-        ResponseEntity<Map> response = rest.exchange(
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
                 baseUrl + "/" + accountId + "/payments",
                 HttpMethod.POST,
                 new HttpEntity<>(Map.of("amount", amount), headers),
-                Map.class
+                new ParameterizedTypeReference<>() {}
         );
         context.setLastResponse(response);
         return response.getBody();
@@ -128,11 +129,11 @@ public class AcceptanceHttpClient {
         if (minVersion != null) {
             url = url + "?minVersion=" + minVersion;
         }
-        ResponseEntity<Map> response = rest.exchange(
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
                 url,
                 HttpMethod.GET,
                 HttpEntity.EMPTY,
-                Map.class
+                new ParameterizedTypeReference<>() {}
         );
         context.setLastResponse(response);
         return response.getBody();
@@ -142,12 +143,13 @@ public class AcceptanceHttpClient {
         ensureInitialized();
         Instant deadline = Instant.now().plus(pollingTimeout);
         Map<String, Object> latest = null;
+        var summaryType = new ParameterizedTypeReference<Map<String, Object>>() {};
         while (Instant.now().isBefore(deadline)) {
-            ResponseEntity<Map> response = rest.exchange(
+            ResponseEntity<Map<String, Object>> response = rest.exchange(
                     baseUrl + "/" + accountId + "?minVersion=" + minimumVersion,
                     HttpMethod.GET,
                     HttpEntity.EMPTY,
-                    Map.class
+                    summaryType
             );
             if (response.getStatusCode() == HttpStatus.OK) {
                 latest = response.getBody();
@@ -169,30 +171,31 @@ public class AcceptanceHttpClient {
         ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
         headers.set("Idempotency-Key", idempotencyKey);
-        ResponseEntity<Map> response = rest.exchange(
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
                 baseUrl + "/" + accountId + "/credit-limit",
                 HttpMethod.POST,
                 new HttpEntity<>(Map.of("limit", limit), headers),
-                Map.class
+                new ParameterizedTypeReference<>() {}
         );
         context.setLastResponse(response);
         return response.getBody();
     }
 
-    public ResponseEntity<Map> getSummaryRaw(UUID accountId, Long minVersion) {
+    public ResponseEntity<Map<String, Object>> getSummaryRaw(UUID accountId, Long minVersion) {
         ensureInitialized();
         String url = baseUrl + "/" + accountId;
         if (minVersion != null) {
             url = url + "?minVersion=" + minVersion;
         }
         Instant deadline = Instant.now().plus(pollingTimeout);
-        ResponseEntity<Map> response = null;
+        ResponseEntity<Map<String, Object>> response = null;
+        var summaryType = new ParameterizedTypeReference<Map<String, Object>>() {};
         while (Instant.now().isBefore(deadline)) {
             response = rest.exchange(
                     url,
                     HttpMethod.GET,
                     HttpEntity.EMPTY,
-                    Map.class
+                    summaryType
             );
             if (response.getStatusCode() == HttpStatus.OK) {
                 context.setLastResponse(response);

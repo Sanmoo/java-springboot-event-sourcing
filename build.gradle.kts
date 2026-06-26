@@ -1,6 +1,6 @@
-import net.ltgt.gradle.errorprone.errorprone
-import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.Confidence
+import com.github.spotbugs.snom.Effort
+import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.plugins.quality.Pmd
 
 plugins {
@@ -43,7 +43,6 @@ sourceSets {
         }
     }
 }
-
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
@@ -96,6 +95,17 @@ configurations {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    val mockitoAgent =
+        configurations.testRuntimeClasspath
+            .get()
+            .files
+            .find { it.name.startsWith("mockito-core-") }
+            ?.absolutePath
+    val jvmArgsList = mutableListOf("-XX:+EnableDynamicAgentLoading", "-Xshare:off")
+    if (mockitoAgent != null) {
+        jvmArgsList.add(0, "-javaagent:$mockitoAgent")
+    }
+    jvmArgs(jvmArgsList)
 }
 
 tasks.register<Test>("qualityTest") {
@@ -132,6 +142,10 @@ tasks.named<Pmd>("pmdTest") {
     ruleSetConfig = resources.text.fromFile(file("config/pmd/pmd-test.xml"))
 }
 
+tasks.named<Pmd>("pmdAcceptanceTest") {
+    ruleSetConfig = resources.text.fromFile(file("config/pmd/pmd-test.xml"))
+}
+
 tasks.named<Pmd>("pmdQualityTest") {
     ruleSetConfig = resources.text.fromFile(file("config/pmd/pmd-test.xml"))
 }
@@ -150,6 +164,7 @@ tasks.spotbugsMain {
 }
 
 tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Xlint:unchecked"))
     options.errorprone {
         allErrorsAsWarnings = false
         disableWarningsInGeneratedCode = true
@@ -165,20 +180,32 @@ tasks.named<JavaCompile>("compileAcceptanceTestJava") {
     }
 }
 
+fun resolveMockitoAgentPath(): String? =
+    configurations.testRuntimeClasspath
+        .get()
+        .files
+        .find { it.name.startsWith("mockito-core-") }
+        ?.absolutePath
+
 pitest {
     pitestVersion = "1.25.3"
     junit5PluginVersion = "1.2.1"
     targetClasses = setOf("com.sanmoo.eventsourcing.creditaccount.domain.*", "com.sanmoo.eventsourcing.creditaccount.core.*")
-    excludedClasses = setOf(
-        "com.sanmoo.eventsourcing.creditaccount.domain.model.*",
-        "com.sanmoo.eventsourcing.creditaccount.domain.error.*",
-        "com.sanmoo.eventsourcing.creditaccount.core.error.*",
-        "com.sanmoo.eventsourcing.creditaccount.core.port.*"
-    )
+    excludedClasses =
+        setOf(
+            "com.sanmoo.eventsourcing.creditaccount.domain.model.*",
+            "com.sanmoo.eventsourcing.creditaccount.domain.error.*",
+            "com.sanmoo.eventsourcing.creditaccount.core.error.*",
+            "com.sanmoo.eventsourcing.creditaccount.core.port.*",
+        )
     mutators = setOf("ALL")
     mutationThreshold = 80
     outputFormats = setOf("HTML")
     timestampedReports = false
+    // Instruct pitest minion JVMs to suppress JDK warnings about dynamic agent loading and class-data sharing
+    val pitestArgs = mutableListOf("-XX:+EnableDynamicAgentLoading", "-Xshare:off")
+    resolveMockitoAgentPath()?.let { pitestArgs.add(0, "-javaagent:$it") }
+    jvmArgs = pitestArgs
 }
 
 tasks.check {

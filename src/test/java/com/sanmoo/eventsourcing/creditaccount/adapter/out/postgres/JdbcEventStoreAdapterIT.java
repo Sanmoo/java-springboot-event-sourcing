@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -37,7 +37,7 @@ import com.sanmoo.eventsourcing.creditaccount.PostgresTestImage;
 class JdbcEventStoreAdapterIT {
 
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(PostgresTestImage.POSTGRES_18);
+    static PostgreSQLContainer postgres = new PostgreSQLContainer(PostgresTestImage.POSTGRES_18);
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {

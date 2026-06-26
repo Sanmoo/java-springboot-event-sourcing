@@ -213,7 +213,7 @@ public class JdbcOutboxDeliveryRepository implements OutboxDeliveryRepository {
     }
 
     private String intervalLiteral(Duration timeout) {
-        return (int) timeout.getSeconds() + " seconds";
+        return (int) timeout.toSeconds() + " seconds";
     }
 
     private String truncate(String value) {

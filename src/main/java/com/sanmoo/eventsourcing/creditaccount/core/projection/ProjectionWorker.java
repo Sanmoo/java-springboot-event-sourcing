@@ -19,15 +19,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class ProjectionWorker {
-
-    private static final Logger LOG = LoggerFactory.getLogger(ProjectionWorker.class);
 
     private final OutboxDeliveryRepository deliveries;
     private final CreditAccountSummaryRepository summaries;
@@ -105,15 +101,13 @@ public class ProjectionWorker {
                 deliveries.markProcessed(delivery.eventId(), delivery.consumerName());
                 yield result.plusProcessed(1);
             }
-            case APPLY -> applyProjection(result, delivery, event, cp);
+            case APPLY -> applyProjection(result, delivery, event);
         };
     }
 
-    @SuppressWarnings("PMD.UnusedFormalParameter")
     private ProjectionWorkerResult applyProjection(ProjectionWorkerResult result,
                                                    OutboxDelivery delivery,
-                                                   OutboxEvent event,
-                                                   Optional<ProjectionCheckpoint> cp) {
+                                                   OutboxEvent event) {
         CreditAccountId accountId = CreditAccountId.of(UUID.fromString(event.aggregateId()));
         Optional<CreditAccountSummary> current = summaries.findById(accountId);
         CreditAccountSummary base = current.orElseGet(() -> projector.emptySummary(event));

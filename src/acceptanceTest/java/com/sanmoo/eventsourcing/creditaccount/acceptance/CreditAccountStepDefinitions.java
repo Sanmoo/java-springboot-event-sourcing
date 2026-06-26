@@ -126,7 +126,7 @@ public class CreditAccountStepDefinitions {
 
     @Então("a API deve retornar status {int} com mensagem contendo {string}")
     public void apiDeveRetornarStatus(int expectedStatus, String expectedMessageSubstring) {
-        ResponseEntity<Map> last = context.getLastResponse();
+        ResponseEntity<Map<String, Object>> last = context.getLastResponse();
         assertThat(last).isNotNull();
         assertThat(last.getStatusCode().value()).isEqualTo(expectedStatus);
         @SuppressWarnings("unchecked")
@@ -142,7 +142,7 @@ public class CreditAccountStepDefinitions {
 
     @Então("a API deve retornar 202 com requiredVersion {long}")
     public void apiDeveRetornar202ComRequiredVersion(long expectedRequiredVersion) {
-        ResponseEntity<Map> last = context.getLastResponse();
+        ResponseEntity<Map<String, Object>> last = context.getLastResponse();
         assertThat(last).isNotNull();
         assertThat(last.getStatusCode().value()).isEqualTo(202);
         @SuppressWarnings("unchecked")
@@ -165,14 +165,14 @@ public class CreditAccountStepDefinitions {
 
     @Então("o resultado deve ser o mesmo")
     public void resultadoDeveSerOMesmo() {
-        ResponseEntity<Map> last = context.getLastResponse();
+        ResponseEntity<Map<String, Object>> last = context.getLastResponse();
         assertThat(last).isNotNull();
         assertThat(last.getStatusCode().value()).isEqualTo(200);
     }
 
     @Então("a API deve retornar 409 de conflito de idempotência")
     public void apiDeveRetornar409() {
-        ResponseEntity<Map> last = context.getLastResponse();
+        ResponseEntity<Map<String, Object>> last = context.getLastResponse();
         assertThat(last).isNotNull();
         assertThat(last.getStatusCode().value()).isEqualTo(409);
     }

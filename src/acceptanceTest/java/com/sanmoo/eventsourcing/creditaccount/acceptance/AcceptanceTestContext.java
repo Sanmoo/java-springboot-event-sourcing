@@ -12,7 +12,7 @@ public class AcceptanceTestContext {
     private UUID creditAccountId;
     private UUID authorizationId;
     private Long lastProjectedVersion;
-    private ResponseEntity<Map> lastResponse;
+    private ResponseEntity<Map<String, Object>> lastResponse;
     private String lastIdempotencyKey;
 
     public UUID getCreditAccountId() { return creditAccountId; }
@@ -24,8 +24,8 @@ public class AcceptanceTestContext {
     public Long getLastProjectedVersion() { return lastProjectedVersion; }
     public void setLastProjectedVersion(Long lastProjectedVersion) { this.lastProjectedVersion = lastProjectedVersion; }
 
-    public ResponseEntity<Map> getLastResponse() { return lastResponse; }
-    public void setLastResponse(ResponseEntity<Map> lastResponse) { this.lastResponse = lastResponse; }
+    public ResponseEntity<Map<String, Object>> getLastResponse() { return lastResponse; }
+    public void setLastResponse(ResponseEntity<Map<String, Object>> lastResponse) { this.lastResponse = lastResponse; }
 
     public String getLastIdempotencyKey() { return lastIdempotencyKey; }
     public void setLastIdempotencyKey(String lastIdempotencyKey) { this.lastIdempotencyKey = lastIdempotencyKey; }
