@@ -239,4 +239,39 @@ class CreditAccountUseCaseConcurrencyIT {
             assertThat(readOutput.authorizedAmount()).isEqualTo("200.00");
         }
     }
+
+    @Test
+    void concurrent_mixed_commands_maintain_invariants() throws Exception {
+        String authId = "018f5f4b-6a3c-7000-8000-000000000333";
+
+        authorizePurchaseUseCase.execute(new AuthorizePurchaseInput(
+                "mixed-setup-key", accountId, AuthorizationId.of(UUID.fromString(authId)),
+                Money.of("300.00"), "Merchant"));
+
+        var commands = List.of(
+                (Callable<CreditAccountOutput>) () -> capturePurchaseUseCase.execute(new CapturePurchaseInput(
+                        "mixed-capture", accountId, AuthorizationId.of(UUID.fromString(authId)))).account(),
+                () -> receivePaymentUseCase.execute(new ReceivePaymentInput(
+                        "mixed-payment", accountId, Money.of("50.00"))).account(),
+                () -> releasePurchaseAuthorizationUseCase.execute(new ReleasePurchaseAuthorizationInput(
+                        "mixed-release", accountId, AuthorizationId.of(UUID.fromString(authId)))).account()
+        );
+
+        try (var harness = new ConcurrentCommandHarness(commands.size())) {
+            ConcurrentCommandResult<CreditAccountOutput> result = harness.runConcurrently(commands, 10);
+
+            assertThat(result.successfulResults()).hasSizeGreaterThanOrEqualTo(1);
+
+            projectionWorker.processOnce(250);
+
+            var finalAccount = getCreditAccountUseCase.execute(new GetCreditAccountInput(accountId, null));
+            BigDecimal outstanding = new BigDecimal(finalAccount.account().outstandingBalance());
+            BigDecimal authorized = new BigDecimal(finalAccount.account().authorizedAmount());
+            BigDecimal limit = new BigDecimal(finalAccount.account().creditLimit());
+
+            assertThat(outstanding).isGreaterThanOrEqualTo(BigDecimal.ZERO);
+            assertThat(authorized).isGreaterThanOrEqualTo(BigDecimal.ZERO);
+            assertThat(outstanding.add(authorized)).isLessThanOrEqualTo(limit);
+        }
+    }
 }
