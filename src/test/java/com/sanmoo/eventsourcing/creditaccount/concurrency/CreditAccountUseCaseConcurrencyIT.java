@@ -13,6 +13,7 @@ import com.sanmoo.eventsourcing.creditaccount.core.usecase.ReceivePaymentUseCase
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.ReleasePurchaseAuthorizationUseCase;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.AssignCreditLimitInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.AuthorizePurchaseInput;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.AuthorizePurchaseOutput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.CapturePurchaseInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.CreditAccountOutput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.GetCreditAccountInput;
@@ -127,6 +128,42 @@ class CreditAccountUseCaseConcurrencyIT {
             assertThat(new BigDecimal(finalAccount.account().authorizedAmount())
                     .add(new BigDecimal(finalAccount.account().outstandingBalance())))
                     .isLessThanOrEqualTo(new BigDecimal("1000.00"));
+        }
+    }
+
+    @Test
+    void concurrent_duplicate_idempotent_requests_process_once_and_replay() throws Exception {
+        String authorizationId = "018f5f4b-6a3c-7000-8000-000000000111";
+        String idempotencyKey = "duplicate-key-" + UUID.randomUUID();
+        var input = new AuthorizePurchaseInput(
+                idempotencyKey,
+                accountId,
+                AuthorizationId.of(UUID.fromString(authorizationId)),
+                Money.of("75.00"),
+                "Merchant"
+        );
+
+        Callable<AuthorizePurchaseOutput> command =
+                () -> authorizePurchaseUseCase.execute(input);
+
+        try (var harness = new ConcurrentCommandHarness(3)) {
+            ConcurrentCommandResult<AuthorizePurchaseOutput> result =
+                    harness.runConcurrently(List.of(command, command, command), 10);
+
+            assertThat(result.successfulResults()).hasSize(3);
+
+            long replayedCount = result.successfulResults().stream().filter(
+                    AuthorizePurchaseOutput::replayed).count();
+            assertThat(replayedCount).isEqualTo(2);
+
+            var first = result.successfulResults().getFirst();
+            assertThat(result.successfulResults())
+                    .allMatch(output -> output.authorizationId().equals(first.authorizationId()));
+
+            projectionWorker.processOnce(250);
+
+            var finalAccount = getCreditAccountUseCase.execute(new GetCreditAccountInput(accountId, null));
+            assertThat(finalAccount.account().authorizedAmount()).isEqualTo("75.00");
         }
     }
 
