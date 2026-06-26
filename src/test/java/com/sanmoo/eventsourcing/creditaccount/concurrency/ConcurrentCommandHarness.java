@@ -68,6 +68,7 @@ public final class ConcurrentCommandHarness implements AutoCloseable {
         return new ConcurrentCommandResult<>(successfulResults, conflictCount, failureCount, retryCount);
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     private <T> T retry(Callable<T> command, int maxRetries) throws InterruptedException {
         for (int attempt = 0; attempt < maxRetries; attempt++) {
             try {

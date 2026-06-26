@@ -39,7 +39,9 @@
         <exclude name="FieldNamingConventions"/>
     </rule>
 
-    <rule ref="category/java/performance.xml"/>
+    <rule ref="category/java/performance.xml">
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    </rule>
 
     <!-- Test methods use snake_case (e.g. snake_case_methodName) for clarity -->
     <rule ref="category/java/codestyle.xml/MethodNamingConventions">

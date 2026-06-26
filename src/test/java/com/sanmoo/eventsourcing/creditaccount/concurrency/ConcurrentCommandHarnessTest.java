@@ -10,14 +10,14 @@ class ConcurrentCommandHarnessTest {
 
     @Test
     void runConcurrently_executes_all_callables() throws Exception {
-        var harness = new ConcurrentCommandHarness(2);
         List<Callable<String>> commands = List.of(() -> "a", () -> "b");
+        try (var harness = new ConcurrentCommandHarness(2)) {
+            ConcurrentCommandResult<String> result = harness.runConcurrently(commands, 3);
 
-        ConcurrentCommandResult<String> result = harness.runConcurrently(commands, 3);
-
-        assertThat(result.successfulResults()).containsExactlyInAnyOrder("a", "b");
-        assertThat(result.conflictCount()).isZero();
-        assertThat(result.failureCount()).isZero();
-        assertThat(result.retryCount()).isZero();
+            assertThat(result.successfulResults()).containsExactlyInAnyOrder("a", "b");
+            assertThat(result.conflictCount()).isZero();
+            assertThat(result.failureCount()).isZero();
+            assertThat(result.retryCount()).isZero();
+        }
     }
 }
