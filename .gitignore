@@ -1,3 +1,4 @@
+graphify-out/cache
 .worktrees/
 .superpowers/
 .gradle/
@@ -12,3 +13,6 @@ gradlew.bat
 bin/
 .factorypath
 category/
+
+graphify-out/cost.json
+graphify-out/cache
