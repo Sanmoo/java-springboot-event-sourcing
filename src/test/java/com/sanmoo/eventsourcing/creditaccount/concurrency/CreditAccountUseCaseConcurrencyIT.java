@@ -20,6 +20,7 @@ import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.GetCreditAccountI
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.OpenCreditAccountInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReceivePaymentInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReleasePurchaseAuthorizationInput;
+import com.sanmoo.eventsourcing.creditaccount.core.error.ProjectionNotReadyException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AuthorizationNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
@@ -201,6 +202,41 @@ class CreditAccountUseCaseConcurrencyIT {
             var finalAccount = getCreditAccountUseCase.execute(new GetCreditAccountInput(accountId, null));
             assertThat(finalAccount.account().outstandingBalance()).isEqualTo("150.00");
             assertThat(finalAccount.account().authorizedAmount()).isEqualTo("0.00");
+        }
+    }
+
+    @Test
+    void concurrent_write_and_read_with_minVersion_is_consistent() throws Exception {
+        String authorizationId = "018f5f4b-6a3c-7000-8000-000000000222";
+
+        Callable<CreditAccountOutput> writeCommand = authorize(
+                "minversion-write-key", authorizationId, "200.00");
+        Callable<CreditAccountOutput> readCommand = () -> {
+            Exception lastError = null;
+            for (int i = 0; i < 20; i++) {
+                try {
+                    projectionWorker.processOnce(50);
+                    return getCreditAccountUseCase.execute(
+                            new GetCreditAccountInput(accountId, 3L)).account();
+                } catch (ProjectionNotReadyException e) {
+                    lastError = e;
+                    Thread.sleep(50);
+                }
+            }
+            throw new RuntimeException("Read with minVersion failed after retries", lastError);
+        };
+
+        try (var harness = new ConcurrentCommandHarness(2)) {
+            ConcurrentCommandResult<CreditAccountOutput> result = harness.runConcurrently(
+                    List.of(writeCommand, readCommand), 10);
+
+            assertThat(result.successfulResults()).hasSize(2);
+
+            var readOutput = result.successfulResults().stream()
+                    .filter(output -> output.projectedVersion() >= 3L)
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(readOutput.authorizedAmount()).isEqualTo("200.00");
         }
     }
 }
