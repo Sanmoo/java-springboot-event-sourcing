@@ -86,6 +86,17 @@ Tests require:
 ./gradlew test
 ```
 
+### Java formatting
+
+Spotless with Google Java Format covers non-generated Java sources in `main`, `test`, `qualityTest`, and `acceptanceTest`:
+
+```bash
+./gradlew spotlessApply  # Apply formatting
+./gradlew spotlessCheck  # Check formatting without modifying files
+```
+
+`./gradlew build` applies formatting before Java compilation. It can modify tracked Java source files; review the resulting Git diff before committing. Generated code is excluded.
+
 ## Tests
 
 - **Domain tests**: Given-When-Then style, event-sourced aggregate behavior
