@@ -1,9 +1,13 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.AuthorizePurchaseResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.CreditAccountResponse;
 import com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorker;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,206 +20,185 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Map;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class CreditAccountControllerIT {
 
-    @LocalServerPort
-    private int port;
+  @LocalServerPort private int port;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private ProjectionWorker projectionWorker;
+  @Autowired private ProjectionWorker projectionWorker;
 
-    private RestTemplate restTemplate;
-    private String baseUrl;
+  private RestTemplate restTemplate;
+  private String baseUrl;
 
-    @BeforeEach
-    void setUp() {
-        restTemplate = new RestTemplate();
-        baseUrl = "http://localhost:" + port + "/credit-accounts";
-    }
+  @BeforeEach
+  void setUp() {
+    restTemplate = new RestTemplate();
+    baseUrl = "http://localhost:" + port + "/credit-accounts";
+  }
 
-    @Test
-    void fullHappyPath() {
-        // 1. POST /credit-accounts
-        var openResponse = restTemplate.postForEntity(
-                baseUrl,
-                createRequest(null),
-                CreditAccountResponse.class
-        );
-        assertThat(openResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        String accountId = openResponse.getBody().creditAccountId();
+  @Test
+  void fullHappyPath() {
+    // 1. POST /credit-accounts
+    var openResponse =
+        restTemplate.postForEntity(baseUrl, createRequest(null), CreditAccountResponse.class);
+    assertThat(openResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    String accountId = openResponse.getBody().creditAccountId();
 
-        // 2. POST /credit-accounts/{id}/credit-limit
-        var limitResponse = restTemplate.postForEntity(
-                baseUrl + "/" + accountId + "/credit-limit",
-                new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()),
-                CreditAccountResponse.class
-        );
-        assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    // 2. POST /credit-accounts/{id}/credit-limit
+    var limitResponse =
+        restTemplate.postForEntity(
+            baseUrl + "/" + accountId + "/credit-limit",
+            new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()),
+            CreditAccountResponse.class);
+    assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        // 3. POST /credit-accounts/{id}/purchases/authorizations
-        String authorizationId = UUID.randomUUID().toString();
-        var authResponse = restTemplate.postForEntity(
-                baseUrl + "/" + accountId + "/purchases/authorizations",
-                new HttpEntity<>(Map.of(
-                        "authorizationId", authorizationId,
-                        "amount", "100.00",
-                        "merchantName", "Store"
-                ), createHeaders()),
-                AuthorizePurchaseResponse.class
-        );
-        assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(authResponse.getBody().authorizationId()).isEqualTo(authorizationId);
+    // 3. POST /credit-accounts/{id}/purchases/authorizations
+    String authorizationId = UUID.randomUUID().toString();
+    var authResponse =
+        restTemplate.postForEntity(
+            baseUrl + "/" + accountId + "/purchases/authorizations",
+            new HttpEntity<>(
+                Map.of(
+                    "authorizationId", authorizationId,
+                    "amount", "100.00",
+                    "merchantName", "Store"),
+                createHeaders()),
+            AuthorizePurchaseResponse.class);
+    assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(authResponse.getBody().authorizationId()).isEqualTo(authorizationId);
 
-        // Project events before reading summary
-        projectionWorker.processOnce(50);
+    // Project events before reading summary
+    projectionWorker.processOnce(50);
 
-        // 4. GET /credit-accounts/{id} (verify available limit decreased)
-        var getAfterAuth = restTemplate.getForEntity(
-                baseUrl + "/" + accountId,
-                CreditAccountResponse.class
-        );
-        assertThat(getAfterAuth.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(getAfterAuth.getBody().availableLimit()).isEqualTo("400.00");
+    // 4. GET /credit-accounts/{id} (verify available limit decreased)
+    var getAfterAuth =
+        restTemplate.getForEntity(baseUrl + "/" + accountId, CreditAccountResponse.class);
+    assertThat(getAfterAuth.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(getAfterAuth.getBody().availableLimit()).isEqualTo("400.00");
 
-        // 5. POST capture
-        var captureResponse = restTemplate.postForEntity(
-                baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
-                createRequest(null),
-                CreditAccountResponse.class
-        );
-        assertThat(captureResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    // 5. POST capture
+    var captureResponse =
+        restTemplate.postForEntity(
+            baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
+            createRequest(null),
+            CreditAccountResponse.class);
+    assertThat(captureResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        // Project events before reading summary
-        projectionWorker.processOnce(50);
+    // Project events before reading summary
+    projectionWorker.processOnce(50);
 
-        // 6. GET check outstanding balance
-        var getAfterCapture = restTemplate.getForEntity(
-                baseUrl + "/" + accountId,
-                CreditAccountResponse.class
-        );
-        assertThat(getAfterCapture.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(getAfterCapture.getBody().outstandingBalance()).isEqualTo("100.00");
+    // 6. GET check outstanding balance
+    var getAfterCapture =
+        restTemplate.getForEntity(baseUrl + "/" + accountId, CreditAccountResponse.class);
+    assertThat(getAfterCapture.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(getAfterCapture.getBody().outstandingBalance()).isEqualTo("100.00");
 
-        // 7. POST payment
-        var paymentResponse = restTemplate.postForEntity(
-                baseUrl + "/" + accountId + "/payments",
-                new HttpEntity<>(Map.of("amount", "50.00"), createHeaders()),
-                CreditAccountResponse.class
-        );
-        assertThat(paymentResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    // 7. POST payment
+    var paymentResponse =
+        restTemplate.postForEntity(
+            baseUrl + "/" + accountId + "/payments",
+            new HttpEntity<>(Map.of("amount", "50.00"), createHeaders()),
+            CreditAccountResponse.class);
+    assertThat(paymentResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        // Project events before reading summary
-        projectionWorker.processOnce(50);
+    // Project events before reading summary
+    projectionWorker.processOnce(50);
 
-        // 8. GET check outstanding balance reduced
-        var getAfterPayment = restTemplate.getForEntity(
-                baseUrl + "/" + accountId,
-                CreditAccountResponse.class
-        );
-        assertThat(getAfterPayment.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(getAfterPayment.getBody().outstandingBalance()).isEqualTo("50.00");
-    }
+    // 8. GET check outstanding balance reduced
+    var getAfterPayment =
+        restTemplate.getForEntity(baseUrl + "/" + accountId, CreditAccountResponse.class);
+    assertThat(getAfterPayment.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(getAfterPayment.getBody().outstandingBalance()).isEqualTo("50.00");
+  }
 
-    @Test
-    void authorizesAndReleasesUsingReturnedAuthorizationId() {
-        var openResponse = restTemplate.postForEntity(baseUrl, createRequest(null), CreditAccountResponse.class);
-        assertThat(openResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        String accountId = openResponse.getBody().creditAccountId();
+  @Test
+  void authorizesAndReleasesUsingReturnedAuthorizationId() {
+    var openResponse =
+        restTemplate.postForEntity(baseUrl, createRequest(null), CreditAccountResponse.class);
+    assertThat(openResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    String accountId = openResponse.getBody().creditAccountId();
 
-        var limitResponse = restTemplate.postForEntity(
-                baseUrl + "/" + accountId + "/credit-limit",
-                new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()),
-                CreditAccountResponse.class
-        );
-        assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var limitResponse =
+        restTemplate.postForEntity(
+            baseUrl + "/" + accountId + "/credit-limit",
+            new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()),
+            CreditAccountResponse.class);
+    assertThat(limitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        String authorizationId = UUID.randomUUID().toString();
-        var authResponse = restTemplate.postForEntity(
-                baseUrl + "/" + accountId + "/purchases/authorizations",
-                new HttpEntity<>(Map.of(
-                        "authorizationId", authorizationId,
-                        "amount", "100.00",
-                        "merchantName", "Store"
-                ), createHeaders()),
-                AuthorizePurchaseResponse.class
-        );
-        assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(authResponse.getBody().authorizationId()).isEqualTo(authorizationId);
+    String authorizationId = UUID.randomUUID().toString();
+    var authResponse =
+        restTemplate.postForEntity(
+            baseUrl + "/" + accountId + "/purchases/authorizations",
+            new HttpEntity<>(
+                Map.of(
+                    "authorizationId", authorizationId,
+                    "amount", "100.00",
+                    "merchantName", "Store"),
+                createHeaders()),
+            AuthorizePurchaseResponse.class);
+    assertThat(authResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(authResponse.getBody().authorizationId()).isEqualTo(authorizationId);
 
-        var releaseResponse = restTemplate.postForEntity(
-                baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/release",
-                createRequest(null),
-                CreditAccountResponse.class
-        );
-        assertThat(releaseResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var releaseResponse =
+        restTemplate.postForEntity(
+            baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/release",
+            createRequest(null),
+            CreditAccountResponse.class);
+    assertThat(releaseResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        // Project events before reading summary
-        projectionWorker.processOnce(50);
+    // Project events before reading summary
+    projectionWorker.processOnce(50);
 
-        var getAfterRelease = restTemplate.getForEntity(baseUrl + "/" + accountId, CreditAccountResponse.class);
-        assertThat(getAfterRelease.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(getAfterRelease.getBody().authorizedAmount()).isEqualTo("0.00");
-        assertThat(getAfterRelease.getBody().availableLimit()).isEqualTo("500.00");
-    }
+    var getAfterRelease =
+        restTemplate.getForEntity(baseUrl + "/" + accountId, CreditAccountResponse.class);
+    assertThat(getAfterRelease.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(getAfterRelease.getBody().authorizedAmount()).isEqualTo("0.00");
+    assertThat(getAfterRelease.getBody().availableLimit()).isEqualTo("500.00");
+  }
 
-    @Test
-    void idempotencyRecordsDoNotHaveDurableStartedStatusColumn() {
-        Integer count = jdbcTemplate.queryForObject(
-                """
+  @Test
+  void idempotencyRecordsDoNotHaveDurableStartedStatusColumn() {
+    Integer count =
+        jdbcTemplate.queryForObject(
+            """
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'idempotency_records'
                   AND column_name = 'status'
                 """,
-                Integer.class
-        );
+            Integer.class);
 
-        assertThat(count).isZero();
-    }
+    assertThat(count).isZero();
+  }
 
-    @Test
-    void idempotencyKeyReturnsSameResult() {
-        var headers = new HttpHeaders();
-        headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
-        headers.set("Idempotency-Key", "fixed-key-123");
-        var request = new HttpEntity<>(Map.of("limit", "500.00"), headers);
+  @Test
+  void idempotencyKeyReturnsSameResult() {
+    var headers = new HttpHeaders();
+    headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
+    headers.set("Idempotency-Key", "fixed-key-123");
+    var request = new HttpEntity<>(Map.of("limit", "500.00"), headers);
 
-        // First call creates the account
-        var response1 = restTemplate.postForEntity(
-                baseUrl,
-                request,
-                CreditAccountResponse.class
-        );
-        assertThat(response1.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    // First call creates the account
+    var response1 = restTemplate.postForEntity(baseUrl, request, CreditAccountResponse.class);
+    assertThat(response1.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-        // Second call with same key returns same result
-        var response2 = restTemplate.postForEntity(
-                baseUrl,
-                request,
-                CreditAccountResponse.class
-        );
-        assertThat(response2.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response2.getBody()).isEqualTo(response1.getBody());
-    }
+    // Second call with same key returns same result
+    var response2 = restTemplate.postForEntity(baseUrl, request, CreditAccountResponse.class);
+    assertThat(response2.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response2.getBody()).isEqualTo(response1.getBody());
+  }
 
-    private HttpEntity<?> createRequest(Object body) {
-        return new HttpEntity<>(body, createHeaders());
-    }
+  private HttpEntity<?> createRequest(Object body) {
+    return new HttpEntity<>(body, createHeaders());
+  }
 
-    private HttpHeaders createHeaders() {
-        var headers = new HttpHeaders();
-        headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
-        headers.set("Idempotency-Key", UUID.randomUUID().toString());
-        return headers;
-    }
+  private HttpHeaders createHeaders() {
+    var headers = new HttpHeaders();
+    headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
+    headers.set("Idempotency-Key", UUID.randomUUID().toString());
+    return headers;
+  }
 }

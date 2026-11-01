@@ -12,5 +12,4 @@ public record EventEnvelope(
     long aggregateVersion,
     CreditAccountEvent event,
     Instant occurredAt,
-    Map<String, String> metadata
-) {}
+    Map<String, String> metadata) {}

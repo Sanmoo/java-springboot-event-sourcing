@@ -5,6 +5,12 @@ import java.util.List;
 import java.util.Map;
 
 public interface EventStore {
-    List<EventEnvelope> loadEvents(String aggregateType, String aggregateId);
-    AppendResult appendEvents(String aggregateType, String aggregateId, long expectedVersion, List<CreditAccountEvent> events, Map<String, String> metadata);
+  List<EventEnvelope> loadEvents(String aggregateType, String aggregateId);
+
+  AppendResult appendEvents(
+      String aggregateType,
+      String aggregateId,
+      long expectedVersion,
+      List<CreditAccountEvent> events,
+      Map<String, String> metadata);
 }

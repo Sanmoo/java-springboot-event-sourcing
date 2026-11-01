@@ -19,50 +19,46 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class RestExceptionHandler {
 
   @ExceptionHandler(AccountAlreadyExistsException.class)
-  public ResponseEntity<ErrorResponse> handleAccountAlreadyExists(AccountAlreadyExistsException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse(ex.getMessage()));
+  public ResponseEntity<ErrorResponse> handleAccountAlreadyExists(
+      AccountAlreadyExistsException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(IdempotencyConflictException.class)
   public ResponseEntity<ErrorResponse> handleIdempotencyConflict(IdempotencyConflictException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(ConcurrencyConflictException.class)
   public ResponseEntity<ErrorResponse> handleConcurrencyConflict(ConcurrencyConflictException ex) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(AccountNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleAccountNotFound(AccountNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(SummaryNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleSummaryNotFound(SummaryNotFoundException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new ErrorResponse(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(ProjectionNotReadyException.class)
-  public ResponseEntity<ProjectionNotReadyResponse> handleProjectionNotReady(ProjectionNotReadyException ex) {
+  public ResponseEntity<ProjectionNotReadyResponse> handleProjectionNotReady(
+      ProjectionNotReadyException ex) {
     return ResponseEntity.status(HttpStatus.ACCEPTED)
-        .body(new ProjectionNotReadyResponse(
+        .body(
+            new ProjectionNotReadyResponse(
                 ex.getMessage(),
                 ex.getCreditAccountId(),
                 ex.getCurrentProjectionVersion(),
-                ex.getRequiredVersion()
-        ));
+                ex.getRequiredVersion()));
   }
 
   @ExceptionHandler(InvalidPageSizeException.class)
   public ResponseEntity<ErrorResponse> handleInvalidPageSize(InvalidPageSizeException ex) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(new ErrorResponse(ex.getMessage()));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(DomainException.class)

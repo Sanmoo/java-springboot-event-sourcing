@@ -22,28 +22,26 @@ import org.springframework.context.annotation.Import;
 @SpringBootTest
 class CreditAccountEventSourcingApplicationTests {
 
-    @Autowired
-    private ApplicationContext applicationContext;
+  @Autowired private ApplicationContext applicationContext;
 
-    @Autowired
-    private DataSource dataSource;
+  @Autowired private DataSource dataSource;
 
-    @Test
-    void contextLoads() {
-        assertThat(dataSource).isNotNull();
-    }
+  @Test
+  void contextLoads() {
+    assertThat(dataSource).isNotNull();
+  }
 
-    @Test
-    void useCasesAreDiscoveredWithoutRestConfiguration() {
-        assertThat(applicationContext.getBean(CreditAccountUseCaseSupport.class)).isNotNull();
-        assertThat(applicationContext.getBean(OpenCreditAccountUseCase.class)).isNotNull();
-        assertThat(applicationContext.getBean(AssignCreditLimitUseCase.class)).isNotNull();
-        assertThat(applicationContext.getBean(ChangeCreditLimitUseCase.class)).isNotNull();
-        assertThat(applicationContext.getBean(AuthorizePurchaseUseCase.class)).isNotNull();
-        assertThat(applicationContext.getBean(CapturePurchaseUseCase.class)).isNotNull();
-        assertThat(applicationContext.getBean(ReleasePurchaseAuthorizationUseCase.class)).isNotNull();
-        assertThat(applicationContext.getBean(ReceivePaymentUseCase.class)).isNotNull();
-        assertThat(applicationContext.getBean(GetCreditAccountUseCase.class)).isNotNull();
-        assertThat(applicationContext.containsBean("restConfiguration")).isFalse();
-    }
+  @Test
+  void useCasesAreDiscoveredWithoutRestConfiguration() {
+    assertThat(applicationContext.getBean(CreditAccountUseCaseSupport.class)).isNotNull();
+    assertThat(applicationContext.getBean(OpenCreditAccountUseCase.class)).isNotNull();
+    assertThat(applicationContext.getBean(AssignCreditLimitUseCase.class)).isNotNull();
+    assertThat(applicationContext.getBean(ChangeCreditLimitUseCase.class)).isNotNull();
+    assertThat(applicationContext.getBean(AuthorizePurchaseUseCase.class)).isNotNull();
+    assertThat(applicationContext.getBean(CapturePurchaseUseCase.class)).isNotNull();
+    assertThat(applicationContext.getBean(ReleasePurchaseAuthorizationUseCase.class)).isNotNull();
+    assertThat(applicationContext.getBean(ReceivePaymentUseCase.class)).isNotNull();
+    assertThat(applicationContext.getBean(GetCreditAccountUseCase.class)).isNotNull();
+    assertThat(applicationContext.containsBean("restConfiguration")).isFalse();
+  }
 }

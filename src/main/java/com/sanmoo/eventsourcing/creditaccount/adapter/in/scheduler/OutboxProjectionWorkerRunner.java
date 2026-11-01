@@ -10,51 +10,63 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "credit-account.projections", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+    prefix = "credit-account.projections",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class OutboxProjectionWorkerRunner {
 
-    private final LogAccessor log = new LogAccessor(OutboxProjectionWorkerRunner.class);
+  private final LogAccessor log = new LogAccessor(OutboxProjectionWorkerRunner.class);
 
-    private final ProjectionWorker worker;
-    private final StaleDeliveryRecovery recovery;
-    private final int batchSize;
-    private final int staleRecoveryIntervalCycles;
+  private final ProjectionWorker worker;
+  private final StaleDeliveryRecovery recovery;
+  private final int batchSize;
+  private final int staleRecoveryIntervalCycles;
 
-    private int cycle;
+  private int cycle;
 
-    public OutboxProjectionWorkerRunner(ProjectionWorker worker,
-                                        StaleDeliveryRecovery recovery,
-                                        ProjectionConfig properties,
-                                        @org.springframework.beans.factory.annotation.Value(
-                                                "${credit-account.projections.stale-recovery-interval-cycles:30}")
-                                        int staleRecoveryIntervalCycles) {
-        this.worker = worker;
-        this.recovery = recovery;
-        this.batchSize = properties.getBatchSize();
-        this.staleRecoveryIntervalCycles = staleRecoveryIntervalCycles;
-    }
+  public OutboxProjectionWorkerRunner(
+      ProjectionWorker worker,
+      StaleDeliveryRecovery recovery,
+      ProjectionConfig properties,
+      @org.springframework.beans.factory.annotation.Value(
+              "${credit-account.projections.stale-recovery-interval-cycles:30}")
+          int staleRecoveryIntervalCycles) {
+    this.worker = worker;
+    this.recovery = recovery;
+    this.batchSize = properties.getBatchSize();
+    this.staleRecoveryIntervalCycles = staleRecoveryIntervalCycles;
+  }
 
-    @Scheduled(fixedDelayString = "${credit-account.projections.poll-interval:1s}")
-    @SuppressWarnings("PMD.AvoidCatchingGenericException")
-    public void run() {
-        try {
-            ProjectionWorkerResult result = worker.processOnce(batchSize);
-            if (result.claimed() > 0) {
-                log.debug(() -> "Projection worker claimed " + result.claimed()
-                        + " processed=" + result.processed()
-                        + " blocked=" + result.blocked()
-                        + " retried=" + result.retried()
-                        + " failed=" + result.failed());
-            }
-            cycle++;
-            if (staleRecoveryIntervalCycles > 0 && cycle % staleRecoveryIntervalCycles == 0) {
-                int recovered = recovery.recover();
-                if (recovered > 0) {
-                    log.info(() -> "Recovered " + recovered + " stale outbox deliveries");
-                }
-            }
-        } catch (RuntimeException e) {
-            log.error(e, "Projection worker tick failed");
+  @Scheduled(fixedDelayString = "${credit-account.projections.poll-interval:1s}")
+  @SuppressWarnings("PMD.AvoidCatchingGenericException")
+  public void run() {
+    try {
+      ProjectionWorkerResult result = worker.processOnce(batchSize);
+      if (result.claimed() > 0) {
+        log.debug(
+            () ->
+                "Projection worker claimed "
+                    + result.claimed()
+                    + " processed="
+                    + result.processed()
+                    + " blocked="
+                    + result.blocked()
+                    + " retried="
+                    + result.retried()
+                    + " failed="
+                    + result.failed());
+      }
+      cycle++;
+      if (staleRecoveryIntervalCycles > 0 && cycle % staleRecoveryIntervalCycles == 0) {
+        int recovered = recovery.recover();
+        if (recovered > 0) {
+          log.info(() -> "Recovered " + recovered + " stale outbox deliveries");
         }
+      }
+    } catch (RuntimeException e) {
+      log.error(e, "Projection worker tick failed");
     }
+  }
 }

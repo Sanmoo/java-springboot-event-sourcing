@@ -9,8 +9,6 @@ import java.util.UUID;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AuthorizePurchaseRequest(
-        @NotNull @JsonProperty("authorizationId") UUID authorizationId,
-        @NotNull @JsonProperty("amount") BigDecimal amount,
-        @NotBlank @JsonProperty("merchantName") String merchantName
-) {
-}
+    @NotNull @JsonProperty("authorizationId") UUID authorizationId,
+    @NotNull @JsonProperty("amount") BigDecimal amount,
+    @NotBlank @JsonProperty("merchantName") String merchantName) {}

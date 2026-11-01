@@ -1,131 +1,152 @@
 package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
-import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.AuthorizePurchaseInput;
-import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.PurchaseAuthorizationOutput;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
-import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
 import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRecord;
+import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.AuthorizePurchaseInput;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.PurchaseAuthorizationOutput;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
-import tools.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 class AuthorizePurchaseUseCaseTest {
 
-    private EventStore eventStore;
-    private IdempotencyRepository idempotencyRepository;
-    private ObjectMapper objectMapper;
-    private CreditAccountUseCaseSupport support;
-    private AuthorizePurchaseUseCase useCase;
+  private EventStore eventStore;
+  private IdempotencyRepository idempotencyRepository;
+  private ObjectMapper objectMapper;
+  private CreditAccountUseCaseSupport support;
+  private AuthorizePurchaseUseCase useCase;
 
-    @BeforeEach
-    void setUp() {
-        eventStore = mock(EventStore.class);
-        idempotencyRepository = mock(IdempotencyRepository.class);
-        objectMapper = new ObjectMapper();
-        support = new CreditAccountUseCaseSupport(eventStore, idempotencyRepository, objectMapper);
-        useCase = new AuthorizePurchaseUseCase(support);
-    }
+  @BeforeEach
+  void setUp() {
+    eventStore = mock(EventStore.class);
+    idempotencyRepository = mock(IdempotencyRepository.class);
+    objectMapper = new ObjectMapper();
+    support = new CreditAccountUseCaseSupport(eventStore, idempotencyRepository, objectMapper);
+    useCase = new AuthorizePurchaseUseCase(support);
+  }
 
-    @Test
-    void executeAuthorizesPurchase() {
-        UUID accountId = UUID.randomUUID();
-        CreditAccountId creditAccountId = CreditAccountId.of(accountId);
-        Instant now = Instant.now();
+  @Test
+  void executeAuthorizesPurchase() {
+    UUID accountId = UUID.randomUUID();
+    CreditAccountId creditAccountId = CreditAccountId.of(accountId);
+    Instant now = Instant.now();
 
-        doNothing().when(idempotencyRepository).lockKey(anyString());
-        when(idempotencyRepository.findByKey(anyString())).thenReturn(java.util.Optional.empty());
-        when(eventStore.loadEvents(any(), any())).thenReturn(List.of(
-                new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 1,
-                        new CreditAccountOpened(creditAccountId, now), now, Map.of()),
-                new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 2,
-                        new CreditLimitAssigned(creditAccountId, Money.of("500.00"), now), now, Map.of())
-        ));
-        when(eventStore.appendEvents(any(), any(), anyLong(), anyList(), anyMap()))
-                .thenReturn(new AppendResult(3L));
+    doNothing().when(idempotencyRepository).lockKey(anyString());
+    when(idempotencyRepository.findByKey(anyString())).thenReturn(java.util.Optional.empty());
+    when(eventStore.loadEvents(any(), any()))
+        .thenReturn(
+            List.of(
+                new EventEnvelope(
+                    UUID.randomUUID(),
+                    "CreditAccount",
+                    accountId.toString(),
+                    1,
+                    new CreditAccountOpened(creditAccountId, now),
+                    now,
+                    Map.of()),
+                new EventEnvelope(
+                    UUID.randomUUID(),
+                    "CreditAccount",
+                    accountId.toString(),
+                    2,
+                    new CreditLimitAssigned(creditAccountId, Money.of("500.00"), now),
+                    now,
+                    Map.of())));
+    when(eventStore.appendEvents(any(), any(), anyLong(), anyList(), anyMap()))
+        .thenReturn(new AppendResult(3L));
 
-        AuthorizationId authorizationId = AuthorizationId.of(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000123"));
+    AuthorizationId authorizationId =
+        AuthorizationId.of(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000123"));
 
-        var input = new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store");
-        var output = useCase.execute(input);
+    var input =
+        new AuthorizePurchaseInput(
+            "key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store");
+    var output = useCase.execute(input);
 
-        verify(eventStore).appendEvents(
-                eq("CreditAccount"),
-                eq(accountId.toString()),
-                eq(2L),
-                anyList(),
-                anyMap()
-        );
+    verify(eventStore)
+        .appendEvents(eq("CreditAccount"), eq(accountId.toString()), eq(2L), anyList(), anyMap());
 
-        assertThat(output.account().authorizedAmount()).isEqualTo("100.00");
-        assertThat(output.authorizationId()).isEqualTo(authorizationId.value().toString());
-        assertThat(output.account().authorizations())
-                .extracting(PurchaseAuthorizationOutput::authorizationId)
-                .containsExactly(authorizationId.value().toString());
-        assertThat(output.replayed()).isFalse();
-    }
+    assertThat(output.account().authorizedAmount()).isEqualTo("100.00");
+    assertThat(output.authorizationId()).isEqualTo(authorizationId.value().toString());
+    assertThat(output.account().authorizations())
+        .extracting(PurchaseAuthorizationOutput::authorizationId)
+        .containsExactly(authorizationId.value().toString());
+    assertThat(output.replayed()).isFalse();
+  }
 
-    @Test
-    void executeReplayReturnsSuppliedAuthorizationId() throws Exception {
-        UUID accountId = UUID.randomUUID();
-        CreditAccountId creditAccountId = CreditAccountId.of(accountId);
-        AuthorizationId authorizationId = AuthorizationId.of(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000099"));
-        String responsePayload = objectMapper.writeValueAsString(Map.of(
+  @Test
+  void executeReplayReturnsSuppliedAuthorizationId() throws Exception {
+    UUID accountId = UUID.randomUUID();
+    CreditAccountId creditAccountId = CreditAccountId.of(accountId);
+    AuthorizationId authorizationId =
+        AuthorizationId.of(UUID.fromString("018f5f4b-6a3c-7000-8000-000000000099"));
+    String responsePayload =
+        objectMapper.writeValueAsString(
+            Map.of(
                 "aggregateId", accountId.toString(),
                 "aggregateVersion", 3,
-                "responseData", Map.of(
+                "responseData",
+                    Map.of(
                         "creditAccountId", accountId.toString(),
                         "opened", true,
                         "creditLimit", "500.00",
                         "outstandingBalance", "0.00",
                         "authorizedAmount", "100.00",
                         "availableLimit", "400.00",
-                        "authorizations", List.of(Map.of(
-                                "authorizationId", authorizationId.value().toString(),
-                                "amount", "100.00",
-                                "status", "OPEN",
-                                "merchantName", "Store"
-                        ))
-                )
-        ));
+                        "authorizations",
+                            List.of(
+                                Map.of(
+                                    "authorizationId", authorizationId.value().toString(),
+                                    "amount", "100.00",
+                                    "status", "OPEN",
+                                    "merchantName", "Store")))));
 
-        doNothing().when(idempotencyRepository).lockKey(anyString());
-        when(idempotencyRepository.findByKey(eq("key-1"))).thenReturn(java.util.Optional.of(
+    doNothing().when(idempotencyRepository).lockKey(anyString());
+    when(idempotencyRepository.findByKey(eq("key-1")))
+        .thenReturn(
+            java.util.Optional.of(
                 new IdempotencyRecord(
-                        "key-1",
-                        "AuthorizePurchase",
-                        accountId.toString(),
-                        calculateRequestHash(new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store")),
-                        responsePayload
-                )
-        ));
+                    "key-1",
+                    "AuthorizePurchase",
+                    accountId.toString(),
+                    calculateRequestHash(
+                        new AuthorizePurchaseInput(
+                            "key-1",
+                            creditAccountId,
+                            authorizationId,
+                            Money.of("100.00"),
+                            "Store")),
+                    responsePayload)));
 
-        var input = new AuthorizePurchaseInput("key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store");
-        var output = useCase.execute(input);
+    var input =
+        new AuthorizePurchaseInput(
+            "key-1", creditAccountId, authorizationId, Money.of("100.00"), "Store");
+    var output = useCase.execute(input);
 
-        assertThat(output.authorizationId()).isEqualTo(authorizationId.value().toString());
-        assertThat(output.replayed()).isTrue();
-        verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
-    }
+    assertThat(output.authorizationId()).isEqualTo(authorizationId.value().toString());
+    assertThat(output.replayed()).isTrue();
+    verify(eventStore, never()).appendEvents(any(), any(), anyLong(), anyList(), anyMap());
+  }
 
-    private String calculateRequestHash(Object input) throws Exception {
-        byte[] serialized = objectMapper.writeValueAsBytes(input);
-        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-        return java.util.HexFormat.of().formatHex(md.digest(serialized));
-    }
+  private String calculateRequestHash(Object input) throws Exception {
+    byte[] serialized = objectMapper.writeValueAsBytes(input);
+    java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+    return java.util.HexFormat.of().formatHex(md.digest(serialized));
+  }
 }

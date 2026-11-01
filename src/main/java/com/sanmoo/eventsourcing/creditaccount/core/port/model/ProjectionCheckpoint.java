@@ -4,10 +4,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record ProjectionCheckpoint(
-        String projectionName,
-        String aggregateType,
-        String aggregateId,
-        long lastProjectedVersion,
-        UUID lastEventId,
-        Instant updatedAt
-) {}
+    String projectionName,
+    String aggregateType,
+    String aggregateId,
+    long lastProjectedVersion,
+    UUID lastEventId,
+    Instant updatedAt) {}

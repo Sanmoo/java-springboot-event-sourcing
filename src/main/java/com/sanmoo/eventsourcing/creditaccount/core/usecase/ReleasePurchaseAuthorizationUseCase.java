@@ -2,29 +2,27 @@ package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReleasePurchaseAuthorizationInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReleasePurchaseAuthorizationOutput;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
 public class ReleasePurchaseAuthorizationUseCase {
 
-    private final CreditAccountUseCaseSupport support;
+  private final CreditAccountUseCaseSupport support;
 
-    public ReleasePurchaseAuthorizationOutput execute(ReleasePurchaseAuthorizationInput input) {
-        return support.executeIdempotent(
-                input.idempotencyKey(),
-                "ReleasePurchaseAuthorization",
-                input.creditAccountId(),
-                input,
-                account -> account.releasePurchaseAuthorization(input.authorizationId(), now()),
-                result -> new ReleasePurchaseAuthorizationOutput(result.output(), result.replayed())
-        );
-    }
+  public ReleasePurchaseAuthorizationOutput execute(ReleasePurchaseAuthorizationInput input) {
+    return support.executeIdempotent(
+        input.idempotencyKey(),
+        "ReleasePurchaseAuthorization",
+        input.creditAccountId(),
+        input,
+        account -> account.releasePurchaseAuthorization(input.authorizationId(), now()),
+        result -> new ReleasePurchaseAuthorizationOutput(result.output(), result.replayed()));
+  }
 
-    private Instant now() {
-        return Instant.now();
-    }
+  private Instant now() {
+    return Instant.now();
+  }
 }

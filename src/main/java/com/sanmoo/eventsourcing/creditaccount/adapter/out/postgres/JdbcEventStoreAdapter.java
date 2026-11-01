@@ -25,110 +25,162 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class JdbcEventStoreAdapter implements EventStore {
 
-    private static final String LOAD_EVENTS_SQL = """
+  private static final String LOAD_EVENTS_SQL =
+      """
             SELECT event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload, metadata, occurred_at
             FROM event_store
             WHERE aggregate_type = ? AND aggregate_id = ?
             ORDER BY aggregate_version ASC
             """;
 
-    private static final String INSERT_EVENT_SQL = """
+  private static final String INSERT_EVENT_SQL =
+      """
             INSERT INTO event_store (event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload, metadata, occurred_at)
             VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?)
             """;
 
-    private static final String INSERT_OUTBOX_SQL = """
+  private static final String INSERT_OUTBOX_SQL =
+      """
             INSERT INTO outbox_events
               (event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload, metadata, occurred_at)
             VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?)
             """;
 
-    private final JdbcTemplate jdbcTemplate;
-    private final EventTypeMapper eventTypeMapper;
-    private final UniqueIdGenerator uniqueIdGenerator;
-    private final OutboxDeliveryRepository deliveryRepository;
-    private final int defaultMaxAttempts;
-    private final RowMapper<EventEnvelope> rowMapper = (rs, rowNum) -> mapEventEnvelope(rs);
+  private final JdbcTemplate jdbcTemplate;
+  private final EventTypeMapper eventTypeMapper;
+  private final UniqueIdGenerator uniqueIdGenerator;
+  private final OutboxDeliveryRepository deliveryRepository;
+  private final int defaultMaxAttempts;
+  private final RowMapper<EventEnvelope> rowMapper = (rs, rowNum) -> mapEventEnvelope(rs);
 
-    public JdbcEventStoreAdapter(JdbcTemplate jdbcTemplate,
-                                  EventTypeMapper eventTypeMapper,
-                                  UniqueIdGenerator uniqueIdGenerator,
-                                  OutboxDeliveryRepository deliveryRepository,
-                                  @Value("${credit-account.projections.max-attempts:10}") int defaultMaxAttempts) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.eventTypeMapper = eventTypeMapper;
-        this.uniqueIdGenerator = uniqueIdGenerator;
-        this.deliveryRepository = deliveryRepository;
-        this.defaultMaxAttempts = defaultMaxAttempts;
+  public JdbcEventStoreAdapter(
+      JdbcTemplate jdbcTemplate,
+      EventTypeMapper eventTypeMapper,
+      UniqueIdGenerator uniqueIdGenerator,
+      OutboxDeliveryRepository deliveryRepository,
+      @Value("${credit-account.projections.max-attempts:10}") int defaultMaxAttempts) {
+    this.jdbcTemplate = jdbcTemplate;
+    this.eventTypeMapper = eventTypeMapper;
+    this.uniqueIdGenerator = uniqueIdGenerator;
+    this.deliveryRepository = deliveryRepository;
+    this.defaultMaxAttempts = defaultMaxAttempts;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<EventEnvelope> loadEvents(String aggregateType, String aggregateId) {
+    return jdbcTemplate.query(LOAD_EVENTS_SQL, rowMapper, aggregateType, aggregateId);
+  }
+
+  @Override
+  @Transactional
+  @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+  public AppendResult appendEvents(
+      String aggregateType,
+      String aggregateId,
+      long expectedVersion,
+      List<CreditAccountEvent> events,
+      Map<String, String> metadata) {
+    try {
+      long version = expectedVersion;
+      for (CreditAccountEvent event : events) {
+        version++;
+        UUID eventId = uniqueIdGenerator.generate();
+        String eventType = eventTypeMapper.eventType(event);
+        String payload = eventTypeMapper.serialize(event);
+        String metadataJson = serializeMetadata(metadata);
+        Instant occurredAt = event.occurredAt();
+
+        insertEventRow(
+            INSERT_EVENT_SQL,
+            eventId,
+            aggregateType,
+            aggregateId,
+            version,
+            eventType,
+            payload,
+            metadataJson,
+            occurredAt);
+        insertEventRow(
+            INSERT_OUTBOX_SQL,
+            eventId,
+            aggregateType,
+            aggregateId,
+            version,
+            eventType,
+            payload,
+            metadataJson,
+            occurredAt);
+
+        OutboxEvent outboxEvent =
+            new OutboxEvent(
+                eventId,
+                aggregateType,
+                aggregateId,
+                version,
+                eventType,
+                event,
+                metadata,
+                occurredAt);
+        deliveryRepository.insertDeliveriesForEvent(outboxEvent, defaultMaxAttempts);
+      }
+      return new AppendResult(version);
+    } catch (DataIntegrityViolationException e) {
+      throw new ConcurrencyConflictException(aggregateType, aggregateId, expectedVersion, e);
     }
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<EventEnvelope> loadEvents(String aggregateType, String aggregateId) {
-        return jdbcTemplate.query(LOAD_EVENTS_SQL, rowMapper, aggregateType, aggregateId);
+  private void insertEventRow(
+      String sql,
+      UUID eventId,
+      String aggregateType,
+      String aggregateId,
+      long version,
+      String eventType,
+      String payload,
+      String metadataJson,
+      Instant occurredAt) {
+    jdbcTemplate.update(
+        sql,
+        eventId,
+        aggregateType,
+        aggregateId,
+        version,
+        eventType,
+        payload,
+        metadataJson,
+        Timestamp.from(occurredAt));
+  }
+
+  private String serializeMetadata(Map<String, String> metadata) {
+    if (metadata == null || metadata.isEmpty()) {
+      return "{}";
     }
+    return eventTypeMapper.serializeMetadata(metadata);
+  }
 
-    @Override
-    @Transactional
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
-    public AppendResult appendEvents(String aggregateType, String aggregateId, long expectedVersion, List<CreditAccountEvent> events, Map<String, String> metadata) {
-        try {
-            long version = expectedVersion;
-            for (CreditAccountEvent event : events) {
-                version++;
-                UUID eventId = uniqueIdGenerator.generate();
-                String eventType = eventTypeMapper.eventType(event);
-                String payload = eventTypeMapper.serialize(event);
-                String metadataJson = serializeMetadata(metadata);
-                Instant occurredAt = event.occurredAt();
+  private EventEnvelope mapEventEnvelope(ResultSet rs) throws SQLException {
+    UUID eventId = rs.getObject("event_id", UUID.class);
+    String aggregateType = rs.getString("aggregate_type");
+    String aggregateId = rs.getString("aggregate_id");
+    long aggregateVersion = rs.getLong("aggregate_version");
+    String eventType = rs.getString("event_type");
+    String payload = rs.getString("payload");
+    String metadataJson = rs.getString("metadata");
+    Timestamp occurredAtTs = rs.getTimestamp("occurred_at");
+    Instant occurredAt = occurredAtTs.toInstant();
 
-                insertEventRow(INSERT_EVENT_SQL, eventId, aggregateType, aggregateId, version, eventType, payload, metadataJson, occurredAt);
-                insertEventRow(INSERT_OUTBOX_SQL, eventId, aggregateType, aggregateId, version, eventType, payload, metadataJson, occurredAt);
+    CreditAccountEvent event = eventTypeMapper.deserialize(eventType, payload);
+    Map<String, String> metadata = deserializeMetadata(metadataJson);
 
-                OutboxEvent outboxEvent = new OutboxEvent(eventId, aggregateType, aggregateId, version, eventType, event, metadata, occurredAt);
-                deliveryRepository.insertDeliveriesForEvent(outboxEvent, defaultMaxAttempts);
-            }
-            return new AppendResult(version);
-        } catch (DataIntegrityViolationException e) {
-            throw new ConcurrencyConflictException(aggregateType, aggregateId, expectedVersion, e);
-        }
+    return new EventEnvelope(
+        eventId, aggregateType, aggregateId, aggregateVersion, event, occurredAt, metadata);
+  }
+
+  private Map<String, String> deserializeMetadata(String metadataJson) {
+    if (metadataJson == null || metadataJson.isBlank()) {
+      return Map.of();
     }
-
-    private void insertEventRow(String sql, UUID eventId, String aggregateType,
-                                String aggregateId, long version, String eventType,
-                                String payload, String metadataJson, Instant occurredAt) {
-        jdbcTemplate.update(sql, eventId, aggregateType, aggregateId, version,
-                            eventType, payload, metadataJson, Timestamp.from(occurredAt));
-    }
-
-    private String serializeMetadata(Map<String, String> metadata) {
-        if (metadata == null || metadata.isEmpty()) {
-            return "{}";
-        }
-        return eventTypeMapper.serializeMetadata(metadata);
-    }
-
-    private EventEnvelope mapEventEnvelope(ResultSet rs) throws SQLException {
-        UUID eventId = rs.getObject("event_id", UUID.class);
-        String aggregateType = rs.getString("aggregate_type");
-        String aggregateId = rs.getString("aggregate_id");
-        long aggregateVersion = rs.getLong("aggregate_version");
-        String eventType = rs.getString("event_type");
-        String payload = rs.getString("payload");
-        String metadataJson = rs.getString("metadata");
-        Timestamp occurredAtTs = rs.getTimestamp("occurred_at");
-        Instant occurredAt = occurredAtTs.toInstant();
-
-        CreditAccountEvent event = eventTypeMapper.deserialize(eventType, payload);
-        Map<String, String> metadata = deserializeMetadata(metadataJson);
-
-        return new EventEnvelope(eventId, aggregateType, aggregateId, aggregateVersion, event, occurredAt, metadata);
-    }
-
-    private Map<String, String> deserializeMetadata(String metadataJson) {
-        if (metadataJson == null || metadataJson.isBlank()) {
-            return Map.of();
-        }
-        return eventTypeMapper.deserializeMetadata(metadataJson);
-    }
+    return eventTypeMapper.deserializeMetadata(metadataJson);
+  }
 }

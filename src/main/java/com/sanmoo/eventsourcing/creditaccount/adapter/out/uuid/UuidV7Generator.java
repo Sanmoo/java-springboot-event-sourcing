@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class UuidV7Generator implements UniqueIdGenerator {
-    @Override
-    public UUID generate() {
-        return UuidCreator.getTimeOrderedEpoch();
-    }
+  @Override
+  public UUID generate() {
+    return UuidCreator.getTimeOrderedEpoch();
+  }
 }

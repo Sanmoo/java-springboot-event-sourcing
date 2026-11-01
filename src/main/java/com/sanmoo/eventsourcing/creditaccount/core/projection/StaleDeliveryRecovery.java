@@ -10,12 +10,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StaleDeliveryRecovery {
 
-    private final OutboxDeliveryRepository deliveries;
-    private final ProjectionConfig properties;
-    private final TransactionRunner transactionRunner;
+  private final OutboxDeliveryRepository deliveries;
+  private final ProjectionConfig properties;
+  private final TransactionRunner transactionRunner;
 
-    public int recover() {
-        return transactionRunner.runInTransaction(() ->
-                deliveries.recoverStaleProcessing(properties.getProcessingTimeout(), 100));
-    }
+  public int recover() {
+    return transactionRunner.runInTransaction(
+        () -> deliveries.recoverStaleProcessing(properties.getProcessingTimeout(), 100));
+  }
 }

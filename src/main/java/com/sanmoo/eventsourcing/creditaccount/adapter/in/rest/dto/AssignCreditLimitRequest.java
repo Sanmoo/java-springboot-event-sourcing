@@ -6,5 +6,4 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record AssignCreditLimitRequest(@NotNull @JsonProperty("limit") BigDecimal limit) {
-}
+public record AssignCreditLimitRequest(@NotNull @JsonProperty("limit") BigDecimal limit) {}

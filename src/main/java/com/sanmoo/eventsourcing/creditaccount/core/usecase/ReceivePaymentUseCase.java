@@ -2,29 +2,27 @@ package com.sanmoo.eventsourcing.creditaccount.core.usecase;
 
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReceivePaymentInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.ReceivePaymentOutput;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
 public class ReceivePaymentUseCase {
 
-    private final CreditAccountUseCaseSupport support;
+  private final CreditAccountUseCaseSupport support;
 
-    public ReceivePaymentOutput execute(ReceivePaymentInput input) {
-        return support.executeIdempotent(
-                input.idempotencyKey(),
-                "ReceivePayment",
-                input.creditAccountId(),
-                input,
-                account -> account.receivePayment(input.amount(), now()),
-                result -> new ReceivePaymentOutput(result.output(), result.replayed())
-        );
-    }
+  public ReceivePaymentOutput execute(ReceivePaymentInput input) {
+    return support.executeIdempotent(
+        input.idempotencyKey(),
+        "ReceivePayment",
+        input.creditAccountId(),
+        input,
+        account -> account.receivePayment(input.amount(), now()),
+        result -> new ReceivePaymentOutput(result.output(), result.replayed()));
+  }
 
-    private Instant now() {
-        return Instant.now();
-    }
+  private Instant now() {
+    return Instant.now();
+  }
 }

@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EnableConfigurationProperties(ProjectionProperties.class)
 public class CreditAccountApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(CreditAccountApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(CreditAccountApplication.class, args);
+  }
 }

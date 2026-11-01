@@ -8,5 +8,4 @@ import org.springframework.context.annotation.Import;
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
-public class AcceptanceSpringConfig {
-}
+public class AcceptanceSpringConfig {}

@@ -4,5 +4,5 @@ import java.util.UUID;
 
 @FunctionalInterface
 public interface UniqueIdGenerator {
-    UUID generate();
+  UUID generate();
 }

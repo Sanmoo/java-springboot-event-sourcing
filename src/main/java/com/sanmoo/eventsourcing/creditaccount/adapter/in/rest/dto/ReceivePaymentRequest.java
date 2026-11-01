@@ -6,5 +6,4 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ReceivePaymentRequest(@NotNull @JsonProperty("amount") BigDecimal amount) {
-}
+public record ReceivePaymentRequest(@NotNull @JsonProperty("amount") BigDecimal amount) {}
