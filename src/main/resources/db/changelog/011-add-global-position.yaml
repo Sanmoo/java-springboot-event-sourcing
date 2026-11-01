@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-add-global-position
+      author: sanmoo
+      changes:
+        - addColumn:
+            tableName: event_store
+            columns:
+              - column:
+                  name: global_position
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >
+              ALTER TABLE event_store
+              ALTER COLUMN global_position
+              ADD GENERATED ALWAYS AS IDENTITY
+        - addUniqueConstraint:
+            tableName: event_store
+            columnNames: global_position
+            constraintName: uq_event_store_global_position
+        - createIndex:
+            tableName: event_store
+            indexName: idx_event_store_global_position
+            columns:
+              - column:
+                  name: global_position

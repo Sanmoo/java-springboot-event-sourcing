@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/009-backfill-outbox-deliveries.yaml
   - include:
       file: db/changelog/010-drop-idempotency-aggregate-version.yaml
+  - include:
+      file: db/changelog/011-add-global-position.yaml
