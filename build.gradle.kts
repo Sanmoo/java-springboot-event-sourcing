@@ -11,6 +11,7 @@ plugins {
     pmd
     id("com.github.spotbugs") version "6.5.5"
     id("net.ltgt.errorprone") version "5.1.0"
+    id("com.diffplug.spotless") version "8.10.4"
     id("info.solidsoft.pitest") version "1.19.0"
 }
 
@@ -42,6 +43,27 @@ sourceSets {
             runtimeClasspath += sourceSets.test.get().output
         }
     }
+}
+
+spotless {
+    java {
+        target(
+            sourceSets["main"].allJava,
+            sourceSets["test"].allJava,
+            sourceSets["qualityTest"].allJava,
+            sourceSets["acceptanceTest"].allJava,
+        )
+        targetExclude("**/generated/**", "**/build/**")
+        googleJavaFormat("1.30.0")
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    dependsOn("spotlessApply")
+}
+
+tasks.named("spotlessCheck") {
+    mustRunAfter("spotlessApply")
 }
 
 dependencies {
