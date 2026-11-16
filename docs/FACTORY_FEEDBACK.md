@@ -7,3 +7,7 @@ This file exists only to exercise how the Software Factory treats human review f
 1. publish
 2. review
 3. repair
+
+## Review notes
+
+Requested by an operator review.
