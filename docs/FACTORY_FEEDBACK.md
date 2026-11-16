@@ -8,6 +8,7 @@ This file exists only to exercise how the Software Factory treats human review f
 1. Publish
 2. Review
 3. Repair
+See also: docs/FACTORY_FEEDBACK.md#steps
 
 ## Review notes
 
