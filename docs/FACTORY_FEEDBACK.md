@@ -1,5 +1,6 @@
 # Factory feedback
 
+Repaired by explicit request.
 This file exists only to exercise how the Software Factory treats human review feedback.
 
 ## Steps
