@@ -7,3 +7,7 @@ This file exists only to exercise how the Software Factory preserves human commi
 1. publish
 2. human edit
 3. reconcile
+
+## Rollback
+
+This file can be deleted at any time without other changes.
