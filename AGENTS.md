@@ -12,4 +12,4 @@ Triage uses the five default labels. See `docs/agents/triage-labels.md`.
 
 This repository uses a single-context layout. See `docs/agents/domain.md`.
 
-Factory validation gates are optional for documentation changes.
+Factory validation gates are optional for documentation changes for this Ticket only, including later Executions and repairs; the content gate remains required.
