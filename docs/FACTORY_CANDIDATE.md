@@ -1,6 +1,6 @@
 # Factory candidate
 
-This file exists only to exercise the Software Factory candidate release.
+This file exists only to exercise the Software Factory candidate release. The operator approves every merge.
 
 ## Steps
 
