@@ -11,3 +11,4 @@ Triage uses the five default labels. See `docs/agents/triage-labels.md`.
 ### Domain docs
 
 This repository uses a single-context layout. See `docs/agents/domain.md`.
+Factory validation gates are optional for documentation changes.
