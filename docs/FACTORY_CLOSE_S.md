@@ -6,3 +6,4 @@ This file exists only to exercise closing, reopening, cancelling and merging a F
 1. Publish
 2. Close
 3. Cancel
+Repair: requested before the pull request was closed.
