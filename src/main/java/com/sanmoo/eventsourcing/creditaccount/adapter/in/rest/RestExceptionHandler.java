@@ -9,6 +9,9 @@ import com.sanmoo.eventsourcing.creditaccount.core.error.InvalidPageSizeExceptio
 import com.sanmoo.eventsourcing.creditaccount.core.error.ProjectionNotReadyException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.SummaryNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountAlreadyExistsException;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountBlockedException;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountAlreadyBlockedException;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotBlockedException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.DomainException;
 import org.springframework.http.HttpStatus;
@@ -85,8 +88,12 @@ public class RestExceptionHandler {
         .body(new ErrorResponse("Invalid request value"));
   }
 
-  @ExceptionHandler(DomainException.class)
-  public ResponseEntity<ErrorResponse> handleDomainException(DomainException ex) {
+  @ExceptionHandler({AccountBlockedException.class, AccountAlreadyBlockedException.class,
+      AccountNotBlockedException.class})
+  public ResponseEntity<ErrorResponse> handleAccountBlockingRule(DomainException ex) {
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
+        .body(new ErrorResponse(ex.getMessage()));
+  }
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
         .body(new ErrorResponse(ex.getMessage()));
   }
