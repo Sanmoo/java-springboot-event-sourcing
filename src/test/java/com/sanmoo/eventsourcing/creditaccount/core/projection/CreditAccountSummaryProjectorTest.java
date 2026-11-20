@@ -8,7 +8,8 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitChanged;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorizationReleased;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorized;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCaptured;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV1;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV2;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
@@ -130,10 +131,10 @@ class CreditAccountSummaryProjectorTest {
                 "PurchaseAuthorized", auth, java.util.Map.of(), Instant.now());
         var authorized = projector.apply(authEvent, assigned);
 
-        var captured = new PurchaseCaptured(CreditAccountId.of(accountId), authorizationId,
+        var captured = new PurchaseCapturedV2(CreditAccountId.of(accountId), authorizationId,
                 Money.of("150.00"), Instant.now());
         var capturedEvent = new OutboxEvent(UUID.randomUUID(), "CreditAccount", accountId.toString(), 4L,
-                "PurchaseCaptured", captured, java.util.Map.of(), Instant.now());
+                "purchase.captured.v2", captured, java.util.Map.of(), Instant.now());
         var after = projector.apply(capturedEvent, authorized);
 
         assertThat(after.outstandingBalance()).isEqualTo("150.00");
@@ -143,6 +144,49 @@ class CreditAccountSummaryProjectorTest {
                 .containsExactly("CAPTURED");
         assertThat(after.projectedVersion()).isEqualTo(4L);
         assertThat(after.lastEventId()).isEqualTo(capturedEvent.eventId());
+    }
+
+    @Test
+    void apply_partialCaptureReleasesAuthorizationRemainder() {
+        var accountId = UUID.randomUUID();
+        var authorizationId = new AuthorizationId(UUID.randomUUID());
+        var assigned = assignedSummary(accountId, "500.00");
+        var auth = new PurchaseAuthorized(CreditAccountId.of(accountId), authorizationId,
+                Money.of("150.00"), "Store", Instant.now());
+        var authEvent = new OutboxEvent(UUID.randomUUID(), "CreditAccount", accountId.toString(), 3L,
+                "PurchaseAuthorized", auth, java.util.Map.of(), Instant.now());
+        var authorized = projector.apply(authEvent, assigned);
+        var capture = new PurchaseCapturedV2(CreditAccountId.of(accountId), authorizationId, Money.of("60.00"), Instant.now());
+        var captureEvent = new OutboxEvent(UUID.randomUUID(), "CreditAccount", accountId.toString(), 4L,
+                "purchase.captured.v2", capture, java.util.Map.of(), Instant.now());
+
+        var after = projector.apply(captureEvent, authorized);
+
+        assertThat(after.outstandingBalance()).isEqualTo("60.00");
+        assertThat(after.authorizedAmount()).isEqualTo("0.00");
+        assertThat(after.availableLimit()).isEqualTo("440.00");
+        assertThat(after.authorizations()).extracting(CreditAccountSummary.AuthorizationSummary::status).containsExactly("CAPTURED");
+    }
+
+    @Test
+    void apply_legacyCaptureUsesFullAuthorizationAmount() {
+        var accountId = UUID.randomUUID();
+        var authorizationId = new AuthorizationId(UUID.randomUUID());
+        var assigned = assignedSummary(accountId, "500.00");
+        var auth = new PurchaseAuthorized(CreditAccountId.of(accountId), authorizationId,
+                Money.of("150.00"), "Store", Instant.now());
+        var authEvent = new OutboxEvent(UUID.randomUUID(), "CreditAccount", accountId.toString(), 3L,
+                "PurchaseAuthorized", auth, java.util.Map.of(), Instant.now());
+        var authorized = projector.apply(authEvent, assigned);
+        var capture = new PurchaseCapturedV1(CreditAccountId.of(accountId), authorizationId, Instant.now());
+        var captureEvent = new OutboxEvent(UUID.randomUUID(), "CreditAccount", accountId.toString(), 4L,
+                "purchase.captured.v1", capture, java.util.Map.of(), Instant.now());
+
+        var after = projector.apply(captureEvent, authorized);
+
+        assertThat(after.outstandingBalance()).isEqualTo("150.00");
+        assertThat(after.authorizedAmount()).isEqualTo("0.00");
+        assertThat(after.availableLimit()).isEqualTo("350.00");
     }
 
     @Test
@@ -182,10 +226,10 @@ class CreditAccountSummaryProjectorTest {
                 "PurchaseAuthorized", auth, java.util.Map.of(), Instant.now());
         var authorized = projector.apply(authEvent, assigned);
 
-        var captured = new PurchaseCaptured(CreditAccountId.of(accountId), otherAuthorizationId,
+        var captured = new PurchaseCapturedV2(CreditAccountId.of(accountId), otherAuthorizationId,
                 Money.of("150.00"), Instant.now());
         var capturedEvent = new OutboxEvent(UUID.randomUUID(), "CreditAccount", accountId.toString(), 4L,
-                "PurchaseCaptured", captured, java.util.Map.of(), Instant.now());
+                "purchase.captured.v2", captured, java.util.Map.of(), Instant.now());
         var after = projector.apply(capturedEvent, authorized);
 
         assertThat(after.authorizations()).extracting(CreditAccountSummary.AuthorizationSummary::status)

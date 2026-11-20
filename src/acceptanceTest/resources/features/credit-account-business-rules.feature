@@ -56,3 +56,14 @@ Funcionalidade: Regras de negócio da conta de crédito
       | valor autorizado  | 200.00  |
       | limite disponível | 400.00  |
       | saldo em aberto   | 0.00    |
+
+  Cenário: Captura parcial libera o restante da autorização
+    Dado que uma conta de crédito foi aberta
+    E o limite de crédito da conta é "500.00"
+    Quando uma compra de "150.00" é autorizada no estabelecimento "Store"
+    E a autorização da compra é capturada por "60.00"
+    Então eventualmente o resumo da conta deve mostrar:
+      | limite de crédito | 500.00 |
+      | valor autorizado  | 0.00   |
+      | limite disponível | 440.00 |
+      | saldo em aberto   | 60.00  |

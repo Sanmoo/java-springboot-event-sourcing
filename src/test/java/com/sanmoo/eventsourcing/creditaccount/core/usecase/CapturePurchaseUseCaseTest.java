@@ -62,7 +62,7 @@ class CapturePurchaseUseCaseTest {
         when(eventStore.appendEvents(any(), any(), anyLong(), anyList(), anyMap()))
                 .thenReturn(new AppendResult(4L));
 
-        var input = new CapturePurchaseInput("key-1", creditAccountId, authorizationId);
+        var input = new CapturePurchaseInput("key-1", creditAccountId, authorizationId, null);
         var output = useCase.execute(input);
 
         assertThat(output.account().outstandingBalance()).isEqualTo("100.00");

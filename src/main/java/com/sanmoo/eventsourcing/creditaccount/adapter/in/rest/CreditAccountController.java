@@ -82,7 +82,8 @@ public class CreditAccountController {
             @RequestBody(required = false) CapturePurchaseRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
         var authId = AuthorizationId.of(UUID.fromString(authorizationId));
-        var input = new CapturePurchaseInput(idempotencyKey, creditAccountId, authId);
+        var amount = request == null || request.amount() == null ? null : Money.positive(new java.math.BigDecimal(request.amount()));
+        var input = new CapturePurchaseInput(idempotencyKey, creditAccountId, authId, amount);
         var output = capturePurchaseUseCase.execute(input);
         return ResponseEntity.ok(CreditAccountDtoMapper.toResponse(output.account()));
     }

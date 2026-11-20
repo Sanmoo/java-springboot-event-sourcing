@@ -98,12 +98,17 @@ public class AcceptanceHttpClient {
     }
 
     public Map<String, Object> capturePurchase(UUID accountId, UUID authorizationId) {
+        return capturePurchase(accountId, authorizationId, null);
+    }
+
+    public Map<String, Object> capturePurchase(UUID accountId, UUID authorizationId, String amount) {
         ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
+        Map<String, String> body = amount == null ? Map.of() : Map.of("amount", amount);
         ResponseEntity<Map<String, Object>> response = rest.exchange(
                 baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
                 HttpMethod.POST,
-                new HttpEntity<>(Map.of(), headers),
+                new HttpEntity<>(body, headers),
                 new ParameterizedTypeReference<>() {}
         );
         context.setLastResponse(response);

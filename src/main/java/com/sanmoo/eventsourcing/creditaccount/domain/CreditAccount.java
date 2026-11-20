@@ -59,9 +59,17 @@ public final class CreditAccount {
     }
 
     public List<CreditAccountEvent> capturePurchase(AuthorizationId authorizationId, Instant occurredAt) {
+        return capturePurchase(authorizationId, null, occurredAt);
+    }
+
+    public List<CreditAccountEvent> capturePurchase(AuthorizationId authorizationId, Money amount, Instant occurredAt) {
         ensureOpened();
         PurchaseAuthorization authorization = openAuthorization(authorizationId);
-        return recordThat(new PurchaseCaptured(id, authorizationId, authorization.amount(), occurredAt));
+        Money capturedAmount = amount == null ? authorization.amount() : amount;
+        if (!capturedAmount.isGreaterThan(Money.zero()) || capturedAmount.isGreaterThan(authorization.amount())) {
+            throw new InvalidMoneyException("capture amount must be positive and no greater than authorized amount");
+        }
+        return recordThat(new PurchaseCapturedV2(id, authorizationId, capturedAmount, occurredAt));
     }
 
     public List<CreditAccountEvent> releasePurchaseAuthorization(AuthorizationId authorizationId, Instant occurredAt) {
@@ -86,6 +94,18 @@ public final class CreditAccount {
             return Money.zero();
         }
         return creditLimit.minus(outstandingBalance).minus(authorizedAmount);
+    }
+
+    private void applyLegacyCapture(AuthorizationId authorizationId) {
+        PurchaseAuthorization authorization = authorizations.get(authorizationId);
+        applyCapture(authorizationId, authorization.amount());
+    }
+
+    private void applyCapture(AuthorizationId authorizationId, Money amount) {
+        PurchaseAuthorization authorization = authorizations.get(authorizationId);
+        authorizations.put(authorizationId, authorization.capture());
+        authorizedAmount = authorizedAmount.minus(authorization.amount());
+        outstandingBalance = outstandingBalance.plus(amount);
     }
 
     private PurchaseAuthorization openAuthorization(AuthorizationId authorizationId) {
@@ -118,12 +138,8 @@ public final class CreditAccount {
                 authorizations.put(e.authorizationId(), new PurchaseAuthorization(e.authorizationId(), e.amount(), PurchaseAuthorizationStatus.OPEN, e.merchantName()));
                 authorizedAmount = authorizedAmount.plus(e.amount());
             }
-            case PurchaseCaptured e -> {
-                PurchaseAuthorization authorization = authorizations.get(e.authorizationId());
-                authorizations.put(e.authorizationId(), authorization.capture());
-                authorizedAmount = authorizedAmount.minus(e.amount());
-                outstandingBalance = outstandingBalance.plus(e.amount());
-            }
+            case PurchaseCapturedV1 e -> applyLegacyCapture(e.authorizationId());
+            case PurchaseCapturedV2 e -> applyCapture(e.authorizationId(), e.amount());
             case PurchaseAuthorizationReleased e -> {
                 PurchaseAuthorization authorization = authorizations.get(e.authorizationId());
                 authorizations.put(e.authorizationId(), authorization.release());

@@ -71,7 +71,12 @@ public class CreditAccountStepDefinitions {
 
     @Quando("a autorização da compra é capturada")
     public void capturarCompra() {
-        Map<String, Object> response = http.capturePurchase(context.getCreditAccountId(), context.getAuthorizationId());
+        capturarCompra(null);
+    }
+
+    @Quando("a autorização da compra é capturada por {string}")
+    public void capturarCompra(String amount) {
+        Map<String, Object> response = http.capturePurchase(context.getCreditAccountId(), context.getAuthorizationId(), amount);
         if (response != null && response.containsKey("projectedVersion")) {
             context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
         }

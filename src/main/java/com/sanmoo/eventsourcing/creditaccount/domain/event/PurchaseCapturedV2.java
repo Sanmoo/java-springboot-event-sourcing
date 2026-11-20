@@ -5,4 +5,4 @@ import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
 import java.time.Instant;
 
-public record PurchaseCaptured(CreditAccountId creditAccountId, AuthorizationId authorizationId, Money amount, Instant occurredAt) implements CreditAccountEvent {}
+public record PurchaseCapturedV2(CreditAccountId creditAccountId, AuthorizationId authorizationId, Money amount, Instant occurredAt) implements CreditAccountEvent {}
