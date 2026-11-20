@@ -20,7 +20,7 @@ public class CreditAccountSummaryProjector {
     public CreditAccountSummary emptySummary(OutboxEvent event) {
         UUID id = UUID.fromString(event.aggregateId());
         return new CreditAccountSummary(
-                id, false, null, "0.00", "0.00", "0.00",
+                id, false, "ACTIVE", null, "0.00", "0.00", "0.00",
                 List.of(), 0L, null, event.occurredAt());
     }
 
@@ -39,23 +39,33 @@ public class CreditAccountSummaryProjector {
         BigDecimal outstanding = new BigDecimal(s.outstandingBalance()).add(capturedAmount);
         BigDecimal newAuthorized = authorizedAmount.subtract(authorizationAmount);
         BigDecimal available = new BigDecimal(s.availableLimit()).add(releasedAmount);
-        return new CreditAccountSummary(s.creditAccountId(), s.opened(), s.creditLimit(), outstanding.toPlainString(),
+        return new CreditAccountSummary(s.creditAccountId(), s.opened(), s.status(), s.creditLimit(), outstanding.toPlainString(),
                 newAuthorized.toPlainString(), available.toPlainString(), updated, s.projectedVersion() + 1, lastEventId, occurredAt);
     }
 
     private CreditAccountSummary apply(CreditAccountSummary s, CreditAccountEvent event, UUID lastEventId) {
         if (event instanceof CreditAccountOpened opened) {
             return new CreditAccountSummary(
-                    s.creditAccountId(), true, null,
+                    s.creditAccountId(), true, "ACTIVE", null,
                     "0.00", "0.00", "0.00",
                     List.of(), s.projectedVersion() + 1, lastEventId, opened.occurredAt());
+        }
+        if (event instanceof CreditAccountBlocked blocked) {
+            return new CreditAccountSummary(s.creditAccountId(), s.opened(), "BLOCKED", s.creditLimit(),
+                    s.outstandingBalance(), s.authorizedAmount(), s.availableLimit(), s.authorizations(),
+                    s.projectedVersion() + 1, lastEventId, blocked.occurredAt());
+        }
+        if (event instanceof CreditAccountUnblocked unblocked) {
+            return new CreditAccountSummary(s.creditAccountId(), s.opened(), "ACTIVE", s.creditLimit(),
+                    s.outstandingBalance(), s.authorizedAmount(), s.availableLimit(), s.authorizations(),
+                    s.projectedVersion() + 1, lastEventId, unblocked.occurredAt());
         }
         if (event instanceof CreditLimitAssigned assigned) {
             BigDecimal limit = assigned.limit().amount();
             BigDecimal outstanding = new BigDecimal(s.outstandingBalance());
             BigDecimal authorized = new BigDecimal(s.authorizedAmount());
             return new CreditAccountSummary(
-                    s.creditAccountId(), s.opened(), assigned.limit().amount().toPlainString(),
+                    s.creditAccountId(), s.opened(), s.status(), assigned.limit().amount().toPlainString(),
                     s.outstandingBalance(), s.authorizedAmount(),
                     limit.subtract(outstanding).subtract(authorized).toPlainString(),
                     s.authorizations(), s.projectedVersion() + 1, lastEventId, assigned.occurredAt());
@@ -66,7 +76,7 @@ public class CreditAccountSummaryProjector {
             BigDecimal authorized = new BigDecimal(s.authorizedAmount());
             String newAvailable = newLimit.subtract(outstanding).subtract(authorized).toPlainString();
             return new CreditAccountSummary(
-                    s.creditAccountId(), s.opened(), changed.newLimit().amount().toPlainString(),
+                    s.creditAccountId(), s.opened(), s.status(), changed.newLimit().amount().toPlainString(),
                     s.outstandingBalance(), s.authorizedAmount(), newAvailable,
                     s.authorizations(), s.projectedVersion() + 1, lastEventId, changed.occurredAt());
         }
@@ -78,7 +88,7 @@ public class CreditAccountSummaryProjector {
             auths.add(new CreditAccountSummary.AuthorizationSummary(
                     auth.authorizationId().value(), auth.amount().amount().toPlainString(), "OPEN", auth.merchantName()));
             return new CreditAccountSummary(
-                    s.creditAccountId(), s.opened(), s.creditLimit(),
+                    s.creditAccountId(), s.opened(), s.status(), s.creditLimit(),
                     s.outstandingBalance(), newAuthorized.toPlainString(), newAvailable.toPlainString(),
                     auths, s.projectedVersion() + 1, lastEventId, auth.occurredAt());
         }
@@ -102,7 +112,7 @@ public class CreditAccountSummaryProjector {
             BigDecimal newAuthorized = new BigDecimal(s.authorizedAmount()).subtract(releasedAmount);
             BigDecimal newAvailable = new BigDecimal(s.availableLimit()).add(releasedAmount);
             return new CreditAccountSummary(
-                    s.creditAccountId(), s.opened(), s.creditLimit(),
+                    s.creditAccountId(), s.opened(), s.status(), s.creditLimit(),
                     s.outstandingBalance(), newAuthorized.toPlainString(), newAvailable.toPlainString(),
                     updated, s.projectedVersion() + 1, lastEventId, released.occurredAt());
         }
@@ -112,7 +122,7 @@ public class CreditAccountSummaryProjector {
             BigDecimal limit = s.creditLimit() != null ? new BigDecimal(s.creditLimit()) : BigDecimal.ZERO;
             BigDecimal newAvailable = limit.subtract(newOutstanding).subtract(new BigDecimal(s.authorizedAmount()));
             return new CreditAccountSummary(
-                    s.creditAccountId(), s.opened(), s.creditLimit(),
+                    s.creditAccountId(), s.opened(), s.status(), s.creditLimit(),
                     newOutstanding.toPlainString(), s.authorizedAmount(), newAvailable.toPlainString(),
                     s.authorizations(), s.projectedVersion() + 1, lastEventId, payment.occurredAt());
         }

@@ -39,6 +39,6 @@ public class GetCreditAccountUseCase {
         List<PurchaseAuthorizationOutput> auths = s.authorizations().stream()
                 .map(a -> new PurchaseAuthorizationOutput(a.authorizationId().toString(), a.amount(), a.status(), a.merchantName()))
                 .toList();
-        return new CreditAccountOutput(s.creditAccountId().toString(), s.opened(), s.creditLimit(), s.outstandingBalance(), s.authorizedAmount(), s.availableLimit(), auths, s.projectedVersion());
+        return new CreditAccountOutput(s.creditAccountId().toString(), s.opened(), s.status(), s.creditLimit(), s.outstandingBalance(), s.authorizedAmount(), s.availableLimit(), auths, s.projectedVersion());
     }
 }

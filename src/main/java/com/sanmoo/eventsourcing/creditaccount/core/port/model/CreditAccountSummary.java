@@ -7,6 +7,7 @@ import java.util.UUID;
 public record CreditAccountSummary(
         UUID creditAccountId,
         boolean opened,
+        String status,
         String creditLimit,
         String outstandingBalance,
         String authorizedAmount,

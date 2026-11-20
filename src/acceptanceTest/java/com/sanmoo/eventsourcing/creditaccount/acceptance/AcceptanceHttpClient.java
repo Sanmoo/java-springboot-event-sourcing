@@ -115,6 +115,19 @@ public class AcceptanceHttpClient {
         return response.getBody();
     }
 
+    public Map<String, Object> releasePurchase(UUID accountId, UUID authorizationId) {
+        ensureInitialized();
+        HttpHeaders headers = headersWithIdempotencyKey();
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
+                baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/release",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of(), headers),
+                new ParameterizedTypeReference<>() {}
+        );
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
     public Map<String, Object> receivePayment(UUID accountId, String amount) {
         ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();
@@ -136,6 +149,26 @@ public class AcceptanceHttpClient {
                 HttpEntity.EMPTY,
                 new ParameterizedTypeReference<>() {}
         );
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
+    public Map<String, Object> blockAccount(UUID accountId, String reason) {
+        ensureInitialized();
+        HttpHeaders headers = headersWithIdempotencyKey();
+        Map<String, Object> body = reason == null ? Map.of() : Map.of("reason", reason);
+        ResponseEntity<Map<String, Object>> response = rest.exchange(baseUrl + "/" + accountId + "/block",
+                HttpMethod.POST, new HttpEntity<>(body, headers), new ParameterizedTypeReference<>() {});
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
+    public Map<String, Object> unblockAccount(UUID accountId, String reason) {
+        ensureInitialized();
+        HttpHeaders headers = headersWithIdempotencyKey();
+        Map<String, Object> body = reason == null ? Map.of() : Map.of("reason", reason);
+        ResponseEntity<Map<String, Object>> response = rest.exchange(baseUrl + "/" + accountId + "/unblock",
+                HttpMethod.POST, new HttpEntity<>(body, headers), new ParameterizedTypeReference<>() {});
         context.setLastResponse(response);
         return response.getBody();
     }

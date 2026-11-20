@@ -5,6 +5,7 @@ import io.cucumber.java.Before;
 import io.cucumber.java.pt.Dado;
 import io.cucumber.java.pt.E;
 import io.cucumber.java.pt.Então;
+import io.cucumber.java.en.Then;
 import io.cucumber.java.pt.Quando;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ public class CreditAccountStepDefinitions {
         FIELD_MAPPING.put("valor autorizado", "authorizedAmount");
         FIELD_MAPPING.put("limite disponível", "availableLimit");
         FIELD_MAPPING.put("saldo em aberto", "outstandingBalance");
+        FIELD_MAPPING.put("status", "status");
     }
 
     @Autowired
@@ -82,6 +84,28 @@ public class CreditAccountStepDefinitions {
         }
     }
 
+    @Quando("a autorização da compra é liberada")
+    public void liberarCompra() {
+        Map<String, Object> response = http.releasePurchase(context.getCreditAccountId(), context.getAuthorizationId());
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
+    }
+
+    @Então("a liberação deve ser aceita")
+    public void liberacaoAceita() {
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Quando("o pagamento de {string} é recebido")
+    public void receberPagamentoBloqueado(String amount) {
+        Map<String, Object> response = http.receivePayment(context.getCreditAccountId(), amount);
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
+    }
+
     @Quando("um pagamento de {string} é recebido")
     public void receberPagamento(String amount) {
         Map<String, Object> response = http.receivePayment(context.getCreditAccountId(), amount);
@@ -90,7 +114,7 @@ public class CreditAccountStepDefinitions {
         }
     }
 
-    @Então("o histórico da conta deve listar os eventos na ordem:")
+    @Then("o histórico da conta deve listar os eventos na ordem:")
     public void historicoListaEventos(DataTable dataTable) {
         Map<String, Object> history = http.getAccountEvents(context.getCreditAccountId());
         @SuppressWarnings("unchecked")
@@ -104,6 +128,31 @@ public class CreditAccountStepDefinitions {
         }
     }
 
+    @Quando("a conta é bloqueada")
+    public void bloquearConta() {
+        Map<String, Object> response = http.blockAccount(context.getCreditAccountId(), null);
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
+    }
+
+    @Quando("a conta é desbloqueada")
+    public void desbloquearConta() {
+        Map<String, Object> response = http.unblockAccount(context.getCreditAccountId(), null);
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
+    }
+
+    @Então("a autorização deve ser aceita")
+    public void autorizacaoAceita() {
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Então("o pagamento deve ser aceito")
+    public void pagamentoAceito() {
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
+    }
     @Então("eventualmente o resumo da conta deve mostrar:")
     public void resumirConta(DataTable dataTable) {
         Map<String, String> expected = dataTable.asMap(String.class, String.class);

@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-add-credit-account-status
+      author: sanmoo
+      changes:
+        - addColumn:
+            tableName: credit_account_summary
+            columns:
+              - column:
+                  name: status
+                  type: VARCHAR(16)
+                  defaultValue: ACTIVE
+                  constraints:
+                    nullable: false

@@ -114,7 +114,7 @@ public class ProjectionWorker {
         CreditAccountSummary next = projector.apply(event, base);
 
         CreditAccountSummary withEventId = new CreditAccountSummary(
-                next.creditAccountId(), next.opened(), next.creditLimit(),
+                next.creditAccountId(), next.opened(), next.status(), next.creditLimit(),
                 next.outstandingBalance(), next.authorizedAmount(), next.availableLimit(),
                 next.authorizations(), next.projectedVersion(), event.eventId(), next.updatedAt());
         summaries.upsert(withEventId);

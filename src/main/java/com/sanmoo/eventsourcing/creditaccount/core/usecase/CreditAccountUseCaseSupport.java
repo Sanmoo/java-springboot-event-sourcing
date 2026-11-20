@@ -117,6 +117,7 @@ public class CreditAccountUseCaseSupport {
         return new CreditAccountOutput(
                 snapshot.id().value().toString(),
                 snapshot.opened(),
+                snapshot.blocked() ? "BLOCKED" : "ACTIVE",
                 snapshot.creditLimit() != null ? snapshot.creditLimit().amount().toPlainString() : null,
                 snapshot.outstandingBalance().amount().toPlainString(),
                 snapshot.authorizedAmount().amount().toPlainString(),
