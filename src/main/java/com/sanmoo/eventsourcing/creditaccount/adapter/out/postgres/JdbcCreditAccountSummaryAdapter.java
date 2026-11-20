@@ -26,11 +26,12 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
 
     private static final String UPSERT_SQL = """
             INSERT INTO credit_account_summary
-              (credit_account_id, opened, credit_limit, outstanding_balance, authorized_amount, available_limit,
+              (credit_account_id, opened, status, credit_limit, outstanding_balance, authorized_amount, available_limit,
                authorizations, projected_version, last_event_id, updated_at)
-            VALUES (?, ?, ?::numeric, ?::numeric, ?::numeric, ?::numeric, ?::jsonb, ?, ?, ?)
+            VALUES (?, ?, ?, ?::numeric, ?::numeric, ?::numeric, ?::numeric, ?::jsonb, ?, ?, ?)
             ON CONFLICT (credit_account_id) DO UPDATE SET
               opened = EXCLUDED.opened,
+              status = EXCLUDED.status,
               credit_limit = EXCLUDED.credit_limit,
               outstanding_balance = EXCLUDED.outstanding_balance,
               authorized_amount = EXCLUDED.authorized_amount,
@@ -42,10 +43,10 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
             """;
 
     private static final String FIND_BY_ID_SQL =
-            "SELECT credit_account_id, opened, credit_limit, outstanding_balance, authorized_amount, available_limit, authorizations, projected_version, last_event_id, updated_at FROM credit_account_summary WHERE credit_account_id = ?";
+            "SELECT credit_account_id, opened, status, credit_limit, outstanding_balance, authorized_amount, available_limit, authorizations, projected_version, last_event_id, updated_at FROM credit_account_summary WHERE credit_account_id = ?";
 
     private static final String FIND_PAGE_SQL = """
-            SELECT credit_account_id, opened, credit_limit, outstanding_balance, authorized_amount, available_limit, authorizations, projected_version, last_event_id, updated_at FROM credit_account_summary
+            SELECT credit_account_id, opened, status, credit_limit, outstanding_balance, authorized_amount, available_limit, authorizations, projected_version, last_event_id, updated_at FROM credit_account_summary
             ORDER BY updated_at DESC, credit_account_id ASC
             LIMIT ? OFFSET ?
             """;
@@ -62,6 +63,7 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
         jdbcTemplate.update(UPSERT_SQL,
                 summary.creditAccountId(),
                 summary.opened(),
+                summary.status(),
                 summary.creditLimit(),
                 summary.outstandingBalance(),
                 summary.authorizedAmount(),
@@ -93,6 +95,7 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
     private CreditAccountSummary map(ResultSet rs, int rowNum) throws SQLException {
         UUID id = rs.getObject("credit_account_id", UUID.class);
         boolean opened = rs.getBoolean("opened");
+        String status = rs.getString("status");
         String creditLimit = rs.getString("credit_limit");
         String outstanding = rs.getString("outstanding_balance");
         String authorized = rs.getString("authorized_amount");
@@ -105,7 +108,7 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
         List<CreditAccountSummary.AuthorizationSummary> auths =
                 deserializeAuthorizations(authsJson);
 
-        return new CreditAccountSummary(id, opened, creditLimit, outstanding, authorized, available,
+        return new CreditAccountSummary(id, opened, status, creditLimit, outstanding, authorized, available,
                 auths, projectedVersion, lastEventId, updatedAt);
     }
 

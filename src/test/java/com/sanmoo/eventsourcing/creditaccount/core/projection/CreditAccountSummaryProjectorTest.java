@@ -3,6 +3,8 @@ package com.sanmoo.eventsourcing.creditaccount.core.projection;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.CreditAccountSummary;
 import com.sanmoo.eventsourcing.creditaccount.core.port.model.OutboxEvent;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountBlocked;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountUnblocked;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitChanged;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
@@ -42,6 +44,25 @@ class CreditAccountSummaryProjectorTest {
         var after = projector.apply(event, empty);
         assertThat(after.opened()).isTrue();
         assertThat(after.projectedVersion()).isEqualTo(1L);
+    }
+
+    @Test
+    void blockAndUnblockEventsUpdateProjectedStatus() {
+        UUID id = UUID.randomUUID();
+        var openedEvent = openedEvent(id, 1L);
+        var active = projector.apply(openedEvent, projector.emptySummary(openedEvent));
+        var blocked = new CreditAccountBlocked(CreditAccountId.of(id), "review", Instant.now());
+        var blockedEvent = new OutboxEvent(UUID.randomUUID(), "CreditAccount", id.toString(), 2L,
+                "CreditAccountBlocked", blocked, java.util.Map.of(), Instant.now());
+
+        var blockedSummary = projector.apply(blockedEvent, active);
+        assertThat(blockedSummary.status()).isEqualTo("BLOCKED");
+        assertThat(blockedSummary.projectedVersion()).isEqualTo(2L);
+
+        var unblocked = new CreditAccountUnblocked(CreditAccountId.of(id), null, Instant.now());
+        var unblockedEvent = new OutboxEvent(UUID.randomUUID(), "CreditAccount", id.toString(), 3L,
+                "CreditAccountUnblocked", unblocked, java.util.Map.of(), Instant.now());
+        assertThat(projector.apply(unblockedEvent, blockedSummary).status()).isEqualTo("ACTIVE");
     }
 
     @Test

@@ -30,7 +30,7 @@ class JdbcCreditAccountSummaryAdapterIT {
     void upsertAndFindById_roundtrips() {
         UUID id = UUID.randomUUID();
         CreditAccountSummary summary = new CreditAccountSummary(
-                id, true, "1000.00", "0.00", "0.00", "1000.00",
+                id, true, "BLOCKED", "1000.00", "0.00", "0.00", "1000.00",
                 List.of(), 1L, UUID.randomUUID(), Instant.now());
 
         adapter.upsert(summary);
@@ -38,14 +38,15 @@ class JdbcCreditAccountSummaryAdapterIT {
         Optional<CreditAccountSummary> found = adapter.findById(CreditAccountId.of(id));
         assertThat(found).isPresent();
         assertThat(found.get().creditLimit()).isEqualTo("1000.00");
+        assertThat(found.get().status()).isEqualTo("BLOCKED");
     }
 
     @Test
     void findAll_returnsPaginatedResultsOrderedByUpdatedAtDesc() {
         UUID id1 = UUID.randomUUID();
         UUID id2 = UUID.randomUUID();
-        adapter.upsert(new CreditAccountSummary(id1, true, "500.00", "0.00", "0.00", "500.00", List.of(), 1L, UUID.randomUUID(), Instant.now().minusSeconds(60)));
-        adapter.upsert(new CreditAccountSummary(id2, true, "1000.00", "0.00", "0.00", "1000.00", List.of(), 1L, UUID.randomUUID(), Instant.now()));
+        adapter.upsert(new CreditAccountSummary(id1, true, "ACTIVE", "500.00", "0.00", "0.00", "500.00", List.of(), 1L, UUID.randomUUID(), Instant.now().minusSeconds(60)));
+        adapter.upsert(new CreditAccountSummary(id2, true, "ACTIVE", "1000.00", "0.00", "0.00", "1000.00", List.of(), 1L, UUID.randomUUID(), Instant.now()));
 
         CreditAccountSummaryPage page = adapter.findAll(new CreditAccountSummaryPageRequest(0, 10));
 

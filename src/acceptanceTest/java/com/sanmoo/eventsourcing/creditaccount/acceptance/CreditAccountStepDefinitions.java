@@ -23,6 +23,7 @@ public class CreditAccountStepDefinitions {
         FIELD_MAPPING.put("valor autorizado", "authorizedAmount");
         FIELD_MAPPING.put("limite disponível", "availableLimit");
         FIELD_MAPPING.put("saldo em aberto", "outstandingBalance");
+        FIELD_MAPPING.put("status", "status");
     }
 
     @Autowired
@@ -90,7 +91,7 @@ public class CreditAccountStepDefinitions {
         }
     }
 
-    @Então("o histórico da conta deve listar os eventos na ordem:")
+    @Then("o histórico da conta deve listar os eventos na ordem:")
     public void historicoListaEventos(DataTable dataTable) {
         Map<String, Object> history = http.getAccountEvents(context.getCreditAccountId());
         @SuppressWarnings("unchecked")
@@ -104,6 +105,31 @@ public class CreditAccountStepDefinitions {
         }
     }
 
+    @Quando("a conta é bloqueada")
+    public void bloquearConta() {
+        Map<String, Object> response = http.blockAccount(context.getCreditAccountId(), null);
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
+    }
+
+    @Quando("a conta é desbloqueada")
+    public void desbloquearConta() {
+        Map<String, Object> response = http.unblockAccount(context.getCreditAccountId(), null);
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
+    }
+
+    @Então("a autorização deve ser aceita")
+    public void autorizacaoAceita() {
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Então("o pagamento deve ser aceito")
+    public void pagamentoAceito() {
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
+    }
     @Então("eventualmente o resumo da conta deve mostrar:")
     public void resumirConta(DataTable dataTable) {
         Map<String, String> expected = dataTable.asMap(String.class, String.class);

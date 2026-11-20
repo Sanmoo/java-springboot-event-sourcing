@@ -140,6 +140,29 @@ public class AcceptanceHttpClient {
         return response.getBody();
     }
 
+    public Map<String, Object> blockAccount(UUID accountId, String reason) {
+        ensureInitialized();
+        HttpHeaders headers = headersWithIdempotencyKey();
+        Map<String, Object> body = reason == null ? Map.of() : Map.of("reason", reason);
+        ResponseEntity<Map<String, Object>> response = rest.exchange(baseUrl + "/" + accountId + "/block",
+                HttpMethod.POST, new HttpEntity<>(body, headers), new ParameterizedTypeReference<>() {});
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
+    public Map<String, Object> unblockAccount(UUID accountId, String reason) {
+        ensureInitialized();
+        HttpHeaders headers = headersWithIdempotencyKey();
+        Map<String, Object> body = reason == null ? Map.of() : Map.of("reason", reason);
+        ResponseEntity<Map<String, Object>> response = rest.exchange(baseUrl + "/" + accountId + "/unblock",
+                HttpMethod.POST, new HttpEntity<>(body, headers), new ParameterizedTypeReference<>() {});
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
     public Map<String, Object> getSummary(UUID accountId, Long minVersion) {
         ensureInitialized();
         String url = baseUrl + "/" + accountId;

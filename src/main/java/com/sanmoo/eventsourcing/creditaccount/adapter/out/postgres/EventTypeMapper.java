@@ -2,6 +2,8 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountEvent;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountBlocked;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountUnblocked;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitChanged;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorized;
@@ -22,6 +24,8 @@ public class EventTypeMapper {
 
     private static final Map<String, Class<? extends CreditAccountEvent>> TYPE_TO_CLASS = Map.of(
             "credit-account.opened.v1", CreditAccountOpened.class,
+            "credit-account.blocked.v1", CreditAccountBlocked.class,
+            "credit-account.unblocked.v1", CreditAccountUnblocked.class,
             "credit-account.credit-limit-assigned.v1", CreditLimitAssigned.class,
             "credit-account.credit-limit-changed.v1", CreditLimitChanged.class,
             "purchase.authorized.v1", PurchaseAuthorized.class,

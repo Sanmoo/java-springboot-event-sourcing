@@ -16,6 +16,7 @@ import lombok.experimental.Accessors;
 public final class CreditAccount {
     private final CreditAccountId id;
     private boolean opened;
+    private boolean blocked;
     private Money creditLimit;
     private Money outstandingBalance = Money.zero();
     private Money authorizedAmount = Money.zero();
@@ -50,8 +51,22 @@ public final class CreditAccount {
         return recordThat(new CreditLimitChanged(id, newLimit, occurredAt));
     }
 
+    public List<CreditAccountEvent> block(String reason, Instant occurredAt) {
+        ensureOpened();
+        if (blocked) { throw new AccountAlreadyBlockedException("credit account is already blocked"); }
+        return recordThat(new CreditAccountBlocked(id, reason, occurredAt));
+    }
+
+    public List<CreditAccountEvent> unblock(String reason, Instant occurredAt) {
+        ensureOpened();
+        if (!blocked) { throw new AccountNotBlockedException("credit account is not blocked"); }
+        return recordThat(new CreditAccountUnblocked(id, reason, occurredAt));
+    }
+
     public List<CreditAccountEvent> authorizePurchase(AuthorizationId authorizationId, Money amount, String merchantName, Instant occurredAt) {
-        ensureOpened(); ensureLimitAssigned();
+        ensureOpened();
+        if (blocked) { throw new AccountBlockedException("credit account is blocked"); }
+        ensureLimitAssigned();
         if (authorizations.containsKey(authorizationId)) { throw new AuthorizationAlreadyExistsException("authorization already exists"); }
         if (!amount.isGreaterThan(Money.zero())) { throw new InvalidMoneyException("purchase amount must be positive"); }
         if (amount.isGreaterThan(availableLimit())) { throw new InsufficientAvailableLimitException("insufficient available limit"); }
@@ -86,7 +101,7 @@ public final class CreditAccount {
     }
 
     public CreditAccountSnapshot snapshot() {
-        return new CreditAccountSnapshot(id, opened, creditLimit, outstandingBalance, authorizedAmount, availableLimit(), Map.copyOf(authorizations));
+        return new CreditAccountSnapshot(id, opened, blocked, creditLimit, outstandingBalance, authorizedAmount, availableLimit(), Map.copyOf(authorizations));
     }
 
     private Money availableLimit() {
@@ -132,6 +147,8 @@ public final class CreditAccount {
     private void apply(CreditAccountEvent event) {
         switch (event) {
             case CreditAccountOpened _ -> opened = true;
+            case CreditAccountBlocked _ -> blocked = true;
+            case CreditAccountUnblocked _ -> blocked = false;
             case CreditLimitAssigned e -> creditLimit = e.limit();
             case CreditLimitChanged e -> creditLimit = e.newLimit();
             case PurchaseAuthorized e -> {

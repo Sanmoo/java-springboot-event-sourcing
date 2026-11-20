@@ -2,6 +2,9 @@ package com.sanmoo.eventsourcing.creditaccount.domain;
 
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountAlreadyExistsException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotFoundException;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountAlreadyBlockedException;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountBlockedException;
+import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountNotBlockedException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AuthorizationAlreadyExistsException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AuthorizationNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AuthorizationNotOpenException;
@@ -12,6 +15,8 @@ import com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidCreditLimitExc
 import com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidMoneyException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.PaymentExceedsOutstandingBalanceException;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountBlocked;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountUnblocked;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitChanged;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
@@ -62,6 +67,47 @@ class CreditAccountTest {
         assertThat(events).containsExactly(new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")));
         assertThat(account.snapshot().opened()).isTrue();
         assertThat(account.version()).isEqualTo(1L);
+    }
+
+    @Test
+    void blocksAndUnblocksAccountAndRejectsRepeatedTransitions() {
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        Instant blockedAt = Instant.parse("2026-06-01T10:02:00Z");
+        CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
+                new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z"))));
+
+        var blocked = account.block("fraud review", blockedAt);
+        assertThat(blocked).containsExactly(new CreditAccountBlocked(accountId, "fraud review", blockedAt));
+        assertThat(account.snapshot().blocked()).isTrue();
+        assertThat(account.version()).isEqualTo(2L);
+        assertThatThrownBy(() -> account.block(null, Instant.now())).isInstanceOf(AccountAlreadyBlockedException.class);
+
+        Instant unblockedAt = Instant.parse("2026-06-01T10:03:00Z");
+        var unblocked = account.unblock("review complete", unblockedAt);
+        assertThat(unblocked).containsExactly(new CreditAccountUnblocked(accountId, "review complete", unblockedAt));
+        assertThat(account.snapshot().blocked()).isFalse();
+        assertThat(account.version()).isEqualTo(3L);
+        assertThatThrownBy(() -> account.unblock(null, Instant.now())).isInstanceOf(AccountNotBlockedException.class);
+    }
+
+    @Test
+    void blockedAccountRejectsPurchaseAuthorizationButAllowsExistingWork() {
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
+        CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
+                new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
+                new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
+                new PurchaseAuthorized(accountId, authorizationId, Money.of("25.00"), "Book Store", Instant.parse("2026-06-01T10:02:00Z")),
+                new CreditAccountBlocked(accountId, null, Instant.parse("2026-06-01T10:03:00Z"))
+        ));
+
+        assertThatThrownBy(() -> account.authorizePurchase(AuthorizationId.of(UUID.randomUUID()), Money.of("10.00"), "Shop", Instant.now()))
+                .isInstanceOf(AccountBlockedException.class).hasMessageContaining("blocked");
+        assertThat(account.capturePurchase(authorizationId, Instant.parse("2026-06-01T10:04:00Z")))
+                .containsExactly(new PurchaseCaptured(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:04:00Z")));
+        assertThat(account.receivePayment(Money.of("10.00"), Instant.parse("2026-06-01T10:05:00Z")))
+                .containsExactly(new PaymentReceived(accountId, Money.of("10.00"), Instant.parse("2026-06-01T10:05:00Z")));
+        assertThat(account.snapshot().blocked()).isTrue();
     }
 
     @Test

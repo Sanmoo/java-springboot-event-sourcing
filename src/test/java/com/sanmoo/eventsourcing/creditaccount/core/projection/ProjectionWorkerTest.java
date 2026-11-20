@@ -277,7 +277,7 @@ class ProjectionWorkerTest {
         var delivery = new OutboxDelivery(eventId, ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName(),
                 OutboxDeliveryStatus.PROCESSING, 0, 10, Instant.now(), Instant.now(), "w",
                 null, null, null, null, null, Instant.now(), Instant.now());
-        var existing = new CreditAccountSummary(aggregateId, false, null,
+        var existing = new CreditAccountSummary(aggregateId, false, "ACTIVE", null,
                 "0.00", "0.00", "0.00", List.of(), 0L, null, Instant.now());
 
         when(deliveries.claimPending(eq(ConsumerNames.CREDIT_ACCOUNT_SUMMARY_PROJECTOR.getName()), anyString(), anyInt()))

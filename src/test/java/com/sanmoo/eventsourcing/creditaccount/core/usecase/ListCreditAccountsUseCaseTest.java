@@ -51,6 +51,7 @@ class ListCreditAccountsUseCaseTest {
         var summary = new CreditAccountSummary(
                 accountId,
                 true,
+                "ACTIVE",
                 "500.00",
                 "100.00",
                 "25.00",

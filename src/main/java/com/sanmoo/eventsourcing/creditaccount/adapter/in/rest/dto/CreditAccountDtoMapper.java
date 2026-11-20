@@ -12,6 +12,7 @@ public final class CreditAccountDtoMapper {
         return new CreditAccountResponse(
                 output.creditAccountId(),
                 output.opened(),
+                output.status(),
                 output.creditLimit(),
                 output.outstandingBalance(),
                 output.authorizedAmount(),

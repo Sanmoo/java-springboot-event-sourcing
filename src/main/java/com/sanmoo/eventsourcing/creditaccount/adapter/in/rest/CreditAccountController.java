@@ -26,6 +26,8 @@ public class CreditAccountController {
     private final CapturePurchaseUseCase capturePurchaseUseCase;
     private final ReleasePurchaseAuthorizationUseCase releasePurchaseAuthorizationUseCase;
     private final ReceivePaymentUseCase receivePaymentUseCase;
+    private final BlockCreditAccountUseCase blockCreditAccountUseCase;
+    private final UnblockCreditAccountUseCase unblockCreditAccountUseCase;
     private final GetCreditAccountUseCase getCreditAccountUseCase;
     private final ListCreditAccountsUseCase listCreditAccountsUseCase;
     private final GetCreditAccountEventsUseCase getCreditAccountEventsUseCase;
@@ -150,6 +152,29 @@ public class CreditAccountController {
                 .map(event -> new AccountEventResponse(event.version(), event.type(), event.occurredAt(), event.payload()))
                 .toList();
         return ResponseEntity.ok(new AccountEventHistoryResponse(items, output.nextFromVersion()));
+    }
+
+    @PostMapping("/{id}/block")
+    public ResponseEntity<CreditAccountResponse> blockAccount(
+            @PathVariable String id,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody(required = false) AccountBlockRequest request) {
+        var accountId = CreditAccountId.of(UUID.fromString(id));
+        String reason = request == null ? null : request.reason();
+        var output = blockCreditAccountUseCase.execute(new BlockCreditAccountInput(idempotencyKey, accountId, reason));
+        return ResponseEntity.ok(CreditAccountDtoMapper.toResponse(output.account()));
+    }
+
+    @PostMapping("/{id}/unblock")
+    public ResponseEntity<CreditAccountResponse> unblockAccount(
+            @PathVariable String id,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody(required = false) AccountBlockRequest request) {
+        var accountId = CreditAccountId.of(UUID.fromString(id));
+        String reason = request == null ? null : request.reason();
+        var output = unblockCreditAccountUseCase.execute(new UnblockCreditAccountInput(idempotencyKey, accountId, reason));
+        return ResponseEntity.ok(CreditAccountDtoMapper.toResponse(output.account()));
+    }
     }
 
     @GetMapping("/{id}")

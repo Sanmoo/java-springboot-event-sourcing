@@ -5,6 +5,7 @@ import java.util.List;
 public record CreditAccountResponse(
         String creditAccountId,
         boolean opened,
+        String status,
         String creditLimit,
         String outstandingBalance,
         String authorizedAmount,

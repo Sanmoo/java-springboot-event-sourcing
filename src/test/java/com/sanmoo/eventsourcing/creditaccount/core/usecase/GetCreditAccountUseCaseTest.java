@@ -27,7 +27,7 @@ class GetCreditAccountUseCaseTest {
         UUID id = UUID.randomUUID();
         CreditAccountId creditAccountId = CreditAccountId.of(id);
         var summary = new CreditAccountSummary(
-                id, true, "1000.00", "500.00", "200.00", "300.00",
+                id, true, "ACTIVE", "1000.00", "500.00", "200.00", "300.00",
                 List.of(), 5L, UUID.randomUUID(), Instant.now()
         );
         when(repo.findById(creditAccountId)).thenReturn(Optional.of(summary));
@@ -37,6 +37,7 @@ class GetCreditAccountUseCaseTest {
         CreditAccountOutput account = output.account();
         assertThat(account.creditAccountId()).isEqualTo(id.toString());
         assertThat(account.opened()).isTrue();
+        assertThat(account.status()).isEqualTo("ACTIVE");
         assertThat(account.creditLimit()).isEqualTo("1000.00");
         assertThat(account.outstandingBalance()).isEqualTo("500.00");
         assertThat(account.authorizedAmount()).isEqualTo("200.00");
@@ -69,7 +70,7 @@ class GetCreditAccountUseCaseTest {
         UUID id = UUID.randomUUID();
         CreditAccountId creditAccountId = CreditAccountId.of(id);
         var summary = new CreditAccountSummary(
-                id, true, "1000.00", "500.00", "200.00", "300.00",
+                id, true, "ACTIVE", "1000.00", "500.00", "200.00", "300.00",
                 List.of(), 3L, UUID.randomUUID(), Instant.now()
         );
         when(repo.findById(creditAccountId)).thenReturn(Optional.of(summary));
@@ -83,7 +84,7 @@ class GetCreditAccountUseCaseTest {
         UUID id = UUID.randomUUID();
         CreditAccountId creditAccountId = CreditAccountId.of(id);
         var summary = new CreditAccountSummary(
-                id, true, "1000.00", "500.00", "200.00", "300.00",
+                id, true, "ACTIVE", "1000.00", "500.00", "200.00", "300.00",
                 List.of(), 5L, UUID.randomUUID(), Instant.now()
         );
         when(repo.findById(creditAccountId)).thenReturn(Optional.of(summary));

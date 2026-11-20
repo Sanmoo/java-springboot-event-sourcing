@@ -41,6 +41,7 @@ public class ListCreditAccountsUseCase {
         return new CreditAccountOutput(
                 s.creditAccountId().toString(),
                 s.opened(),
+                s.status(),
                 s.creditLimit(),
                 s.outstandingBalance(),
                 s.authorizedAmount(),

@@ -13,6 +13,7 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV1;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV2;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountBlocked;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
@@ -218,6 +219,21 @@ class JdbcEventStoreAdapterIT {
         AccountEventPage second = eventStore.readAccountEvents(id, first.nextFromVersion(), 2);
         assertThat(second.events()).extracting(AccountEvent::version).containsExactly(4L);
         assertThat(second.nextFromVersion()).isNull();
+    }
+
+    @Test
+    void blockEventIsStoredWithVersionedTypeAndReason() {
+        var aggregateId = UUID.randomUUID().toString();
+        var accountId = CreditAccountId.of(UUID.randomUUID());
+        var event = new CreditAccountBlocked(accountId, "fraud review", Instant.parse("2026-06-01T10:00:00Z"));
+
+        eventStore.appendEvents("CreditAccount", aggregateId, 0, List.of(event), Map.of());
+
+        EventEnvelope loaded = eventStore.loadEvents("CreditAccount", aggregateId).getFirst();
+        assertThat(loaded.event()).isEqualTo(event);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT event_type FROM event_store WHERE aggregate_type = ? AND aggregate_id = ?",
+                String.class, "CreditAccount", aggregateId)).isEqualTo("credit-account.blocked.v1");
     }
 
     @Test
