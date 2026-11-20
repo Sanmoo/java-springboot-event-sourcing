@@ -238,7 +238,7 @@ class CreditAccountControllerIT {
         assertThat(response2.getBody()).isEqualTo(response1.getBody());
     }
 
-    private org.springframework.http.ResponseEntity<ErrorResponse> captureErrorResponse(String accountId, String authorizationId, String amount) {
+    private ResponseEntity<ErrorResponse> captureErrorResponse(String accountId, String authorizationId, String amount) {
         var client = new RestTemplate();
         client.setErrorHandler((response) -> false);
         return client.postForEntity(baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
