@@ -14,6 +14,7 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV1;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV2;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import java.time.Instant;
@@ -206,7 +207,7 @@ class JdbcEventStoreAdapterIT {
         eventStore.appendEvents("CreditAccount", id.toString(), 1,
                 List.of(new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2025-01-01T00:00:01Z"))), Map.of());
         eventStore.appendEvents("CreditAccount", id.toString(), 2,
-                List.of(new com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived(
+                List.of(new PaymentReceived(
                         accountId, Money.of("1.00"), Instant.parse("2025-01-01T00:00:02Z"))), Map.of());
         jdbcTemplate.update("UPDATE event_store SET aggregate_version = 4 WHERE aggregate_type = 'CreditAccount' AND aggregate_id = ? AND aggregate_version = 3", id.toString());
 
