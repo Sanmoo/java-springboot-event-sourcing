@@ -37,6 +37,19 @@ class GetCreditAccountEventsUseCaseTest {
     }
 
     @Test
+    void preservesNullPayloadFields() {
+        UUID accountId = UUID.randomUUID();
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("optional", null);
+        var expected = new AccountEvent(1, "credit-account.opened.v1", Instant.parse("2025-01-01T00:00:00Z"), payload);
+        when(eventStore.readAccountEvents(accountId, 1, 1)).thenReturn(new AccountEventPage(List.of(expected), null, true));
+
+        var output = useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 1));
+
+        assertThat(output.items().getFirst().payload()).containsEntry("optional", null);
+    }
+
+    @Test
     void rejectsInvalidPageValues() {
         UUID accountId = UUID.randomUUID();
 

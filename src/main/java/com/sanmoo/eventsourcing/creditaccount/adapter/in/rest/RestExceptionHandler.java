@@ -4,8 +4,8 @@ import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ErrorResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ProjectionNotReadyResponse;
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
-import com.sanmoo.eventsourcing.creditaccount.core.error.InvalidPageSizeException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.InvalidEventHistoryPageException;
+import com.sanmoo.eventsourcing.creditaccount.core.error.InvalidPageSizeException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.ProjectionNotReadyException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.SummaryNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountAlreadyExistsException;
@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class RestExceptionHandler {
@@ -70,6 +71,18 @@ public class RestExceptionHandler {
   public ResponseEntity<ErrorResponse> handleInvalidPageSize(InvalidPageSizeException ex) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ErrorResponse(ex.getMessage()));
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidParameter(MethodArgumentTypeMismatchException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("Invalid request parameter: " + ex.getName()));
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("Invalid request value"));
   }
 
   @ExceptionHandler(DomainException.class)

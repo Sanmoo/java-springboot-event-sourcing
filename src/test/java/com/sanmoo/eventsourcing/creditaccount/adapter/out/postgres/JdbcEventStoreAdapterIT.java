@@ -12,6 +12,7 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV1;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV2;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
@@ -194,6 +195,28 @@ class JdbcEventStoreAdapterIT {
         assertThat(unknown.nextFromVersion()).isNull();
         assertThat(unknown.accountExists()).isFalse();
         assertThat(first.accountExists()).isTrue();
+    }
+
+    @Test
+    void accountHistoryPagingContinuesAtTheNextStoredVersionAcrossVersionGaps() {
+        UUID id = UUID.randomUUID();
+        var accountId = CreditAccountId.of(id);
+        eventStore.appendEvents("CreditAccount", id.toString(), 0,
+                List.of(new CreditAccountOpened(accountId, Instant.parse("2025-01-01T00:00:00Z"))), Map.of());
+        eventStore.appendEvents("CreditAccount", id.toString(), 1,
+                List.of(new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2025-01-01T00:00:01Z"))), Map.of());
+        eventStore.appendEvents("CreditAccount", id.toString(), 2,
+                List.of(new com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived(
+                        accountId, Money.of("1.00"), Instant.parse("2025-01-01T00:00:02Z"))), Map.of());
+        jdbcTemplate.update("UPDATE event_store SET aggregate_version = 4 WHERE aggregate_type = 'CreditAccount' AND aggregate_id = ? AND aggregate_version = 3", id.toString());
+
+        AccountEventPage first = eventStore.readAccountEvents(id, 1, 2);
+
+        assertThat(first.events()).extracting(event -> event.version()).containsExactly(1L, 2L);
+        assertThat(first.nextFromVersion()).isEqualTo(4L);
+        AccountEventPage second = eventStore.readAccountEvents(id, first.nextFromVersion(), 2);
+        assertThat(second.events()).extracting(event -> event.version()).containsExactly(4L);
+        assertThat(second.nextFromVersion()).isNull();
     }
 
     @Test
