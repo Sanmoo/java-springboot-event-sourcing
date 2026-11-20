@@ -128,6 +128,18 @@ public class AcceptanceHttpClient {
         return response.getBody();
     }
 
+    public Map<String, Object> getAccountEvents(UUID accountId) {
+        ensureInitialized();
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
+                baseUrl + "/" + accountId + "/events",
+                HttpMethod.GET,
+                HttpEntity.EMPTY,
+                new ParameterizedTypeReference<>() {}
+        );
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
     public Map<String, Object> getSummary(UUID accountId, Long minVersion) {
         ensureInitialized();
         String url = baseUrl + "/" + accountId;

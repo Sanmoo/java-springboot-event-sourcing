@@ -1,6 +1,8 @@
 package com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres;
 
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
+import com.sanmoo.eventsourcing.creditaccount.core.port.AccountEvent;
+import com.sanmoo.eventsourcing.creditaccount.core.port.AccountEventPage;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
@@ -12,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +33,20 @@ public class JdbcEventStoreAdapter implements EventStore {
             FROM event_store
             WHERE aggregate_type = ? AND aggregate_id = ?
             ORDER BY aggregate_version ASC
+            """;
+
+    private static final String READ_ACCOUNT_EVENTS_SQL = """
+            SELECT aggregate_version, event_type, occurred_at, payload::text AS payload
+            FROM event_store
+            WHERE aggregate_type = 'CreditAccount' AND aggregate_id = ? AND aggregate_version >= ?
+            ORDER BY aggregate_version ASC
+            LIMIT ?
+            """;
+
+    private static final String ACCOUNT_EXISTS_SQL = """
+            SELECT EXISTS (
+                SELECT 1 FROM event_store WHERE aggregate_type = 'CreditAccount' AND aggregate_id = ?
+            )
             """;
 
     private static final String INSERT_EVENT_SQL = """
@@ -66,6 +83,26 @@ public class JdbcEventStoreAdapter implements EventStore {
     @Transactional(readOnly = true)
     public List<EventEnvelope> loadEvents(String aggregateType, String aggregateId) {
         return jdbcTemplate.query(LOAD_EVENTS_SQL, rowMapper, aggregateType, aggregateId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccountEventPage readAccountEvents(UUID accountId, long fromVersion, int limit) {
+        List<AccountEvent> rows = jdbcTemplate.query(READ_ACCOUNT_EVENTS_SQL, (rs, rowNum) ->
+                new AccountEvent(
+                        rs.getLong("aggregate_version"),
+                        rs.getString("event_type"),
+                        rs.getTimestamp("occurred_at").toInstant(),
+                        eventTypeMapper.deserializePayload(rs.getString("payload"))),
+                accountId.toString(), fromVersion, limit + 1);
+        boolean accountExists = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                ACCOUNT_EXISTS_SQL, Boolean.class, accountId.toString()));
+        Long nextFromVersion = null;
+        if (rows.size() > limit) {
+            nextFromVersion = rows.get(limit).version();
+            rows = new ArrayList<>(rows.subList(0, limit));
+        }
+        return new AccountEventPage(rows, nextFromVersion, Boolean.TRUE.equals(accountExists));
     }
 
     @Override

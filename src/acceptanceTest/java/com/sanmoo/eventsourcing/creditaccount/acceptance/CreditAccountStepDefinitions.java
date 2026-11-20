@@ -90,6 +90,20 @@ public class CreditAccountStepDefinitions {
         }
     }
 
+    @Então("o histórico da conta deve listar os eventos na ordem:")
+    public void historicoListaEventos(DataTable dataTable) {
+        Map<String, Object> history = http.getAccountEvents(context.getCreditAccountId());
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> items = (java.util.List<Map<String, Object>>) history.get("items");
+        var expected = dataTable.asMaps(String.class, String.class);
+        assertThat(items).hasSize(expected.size());
+        for (int i = 0; i < expected.size(); i++) {
+            assertThat(((Number) items.get(i).get("version")).longValue())
+                    .isEqualTo(Long.parseLong(expected.get(i).get("versão")));
+            assertThat(items.get(i).get("type")).isEqualTo(expected.get(i).get("tipo"));
+        }
+    }
+
     @Então("eventualmente o resumo da conta deve mostrar:")
     public void resumirConta(DataTable dataTable) {
         Map<String, String> expected = dataTable.asMap(String.class, String.class);

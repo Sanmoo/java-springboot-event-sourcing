@@ -20,3 +20,13 @@ Funcionalidade: Ciclo de vida de uma conta de crédito
       | valor autorizado  | 0.00   |
       | limite disponível | 450.00 |
       | saldo em aberto   | 50.00  |
+
+  Cenário: Histórico lista os eventos da conta na ordem do agregado
+    Dado que uma conta de crédito foi aberta
+    E o limite de crédito da conta é "500.00"
+    Quando uma compra de "100.00" é autorizada no estabelecimento "Store"
+    Então o histórico da conta deve listar os eventos na ordem:
+      | versão | tipo                              |
+      | 1      | credit-account.opened.v1          |
+      | 2      | credit-account.credit-limit-assigned.v1 |
+      | 3      | purchase.authorized.v1             |

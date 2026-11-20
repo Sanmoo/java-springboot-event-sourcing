@@ -65,6 +65,14 @@ public class EventTypeMapper {
         }
     }
 
+    public Map<String, Object> deserializePayload(String payload) {
+        try {
+            return objectMapper.readValue(payload, new TypeReference<>() {});
+        } catch (JacksonException e) {
+            throw new RuntimeException("Failed to deserialize event payload: " + payload, e);
+        }
+    }
+
     public CreditAccountEvent deserialize(String eventType, String payload) {
         Class<? extends CreditAccountEvent> clazz = classForType(eventType);
         try {

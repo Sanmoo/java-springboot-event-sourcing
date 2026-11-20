@@ -54,6 +54,69 @@ class CreditAccountControllerListIT {
     }
 
     @Test
+    void eventHistory_returns404_whenAccountIsUnknown() {
+        UUID id = UUID.randomUUID();
+        RestTemplate errorTolerantRest = new RestTemplate();
+        errorTolerantRest.setErrorHandler((response) -> false);
+        ResponseEntity<Map<String, Object>> response = errorTolerantRest.exchange(
+                url("/credit-accounts/" + id + "/events"), org.springframework.http.HttpMethod.GET,
+                org.springframework.http.HttpEntity.EMPTY,
+                new org.springframework.core.ParameterizedTypeReference<>() { });
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsKey("error");
+    }
+
+    @Test
+    void eventHistory_returns400_forInvalidPageParameters() {
+        UUID id = UUID.randomUUID();
+        for (String query : List.of("fromVersion=0", "limit=0", "limit=201")) {
+            RestTemplate errorTolerantRest = new RestTemplate();
+            errorTolerantRest.setErrorHandler((response) -> false);
+            ResponseEntity<Map<String, Object>> response = errorTolerantRest.exchange(
+                    url("/credit-accounts/" + id + "/events?" + query), org.springframework.http.HttpMethod.GET,
+                    org.springframework.http.HttpEntity.EMPTY,
+                    new org.springframework.core.ParameterizedTypeReference<>() { });
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).containsKey("error");
+        }
+    }
+
+    @Test
+    void eventHistory_returns400_forMalformedAccountId() {
+        RestTemplate errorTolerantRest = new RestTemplate();
+        errorTolerantRest.setErrorHandler((response) -> false);
+        ResponseEntity<Map<String, Object>> response = errorTolerantRest.exchange(
+                url("/credit-accounts/not-a-uuid/events"), org.springframework.http.HttpMethod.GET,
+                org.springframework.http.HttpEntity.EMPTY,
+                new org.springframework.core.ParameterizedTypeReference<>() { });
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("error");
+    }
+
+    @Test
+    void eventHistory_returnsVersionedEventsFromTheWriteSide() {
+        UUID id = UUID.randomUUID();
+        eventStoreAdapter.appendEvents("CreditAccount", id.toString(), 0,
+                List.of(new CreditAccountOpened(CreditAccountId.of(id), Instant.parse("2025-01-01T00:00:00Z"))), Map.of());
+        eventStoreAdapter.appendEvents("CreditAccount", id.toString(), 1,
+                List.of(new CreditLimitAssigned(CreditAccountId.of(id), Money.of("1000.00"),
+                        Instant.parse("2025-01-01T00:00:01Z"))), Map.of());
+
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
+                url("/credit-accounts/" + id + "/events?limit=1"), org.springframework.http.HttpMethod.GET,
+                org.springframework.http.HttpEntity.EMPTY,
+                new org.springframework.core.ParameterizedTypeReference<>() { });
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().get("nextFromVersion")).isEqualTo(2);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) response.getBody().get("items");
+        assertThat(items).hasSize(1);
+        assertThat(items.getFirst()).containsEntry("version", 1).containsEntry("type", "credit-account.opened.v1");
+        assertThat(items.getFirst().get("payload")).isInstanceOf(Map.class);
+    }
+
+    @Test
     void getById_returns404_whenSummaryMissing() {
         UUID id = UUID.randomUUID();
         try {
