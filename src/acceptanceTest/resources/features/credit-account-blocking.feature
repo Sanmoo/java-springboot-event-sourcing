@@ -14,7 +14,7 @@ Funcionalidade: Bloqueio de conta de crédito
     Quando uma compra de "100.00" é autorizada no estabelecimento "Store"
     E a autorização da compra é capturada
     E a conta é bloqueada
-    E um pagamento de "25.00" é recebido
+    E o pagamento de "25.00" é recebido
     Então o pagamento deve ser aceito
 
   Cenário: Conta desbloqueada aceita novas autorizações

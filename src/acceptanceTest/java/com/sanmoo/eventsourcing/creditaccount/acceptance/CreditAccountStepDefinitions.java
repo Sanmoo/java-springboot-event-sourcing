@@ -83,6 +83,15 @@ public class CreditAccountStepDefinitions {
         }
     }
 
+    @Quando("o pagamento de {string} é recebido")
+    public void receberPagamentoBloqueado(String amount) {
+        Map<String, Object> response = http.receivePayment(context.getCreditAccountId(), amount);
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
+    }
+
     @Quando("um pagamento de {string} é recebido")
     public void receberPagamento(String amount) {
         Map<String, Object> response = http.receivePayment(context.getCreditAccountId(), amount);
