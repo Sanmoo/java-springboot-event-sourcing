@@ -95,6 +95,9 @@ public class CreditAccountController {
         final java.math.BigDecimal parsedAmount;
         try {
             parsedAmount = new java.math.BigDecimal(request.amount());
+            if (parsedAmount.scale() > 2) {
+                throw new NumberFormatException("capture amount supports at most two fractional digits");
+            }
         } catch (NumberFormatException exception) {
             throw invalidCaptureAmount(exception);
         }

@@ -144,11 +144,14 @@ class CreditAccountControllerIT {
 
         var malformed = captureErrorResponse(accountId, authorizationId, "not-money");
         var zero = captureErrorResponse(accountId, authorizationId, "0.00");
+        var excessiveScale = captureErrorResponse(accountId, authorizationId, "1.001");
 
         assertThat(malformed.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
         assertThat(malformed.getBody().error()).contains("capture amount");
         assertThat(zero.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
         assertThat(zero.getBody().error()).contains("capture amount");
+        assertThat(excessiveScale.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+        assertThat(excessiveScale.getBody().error()).contains("capture amount");
     }
 
     @Test
