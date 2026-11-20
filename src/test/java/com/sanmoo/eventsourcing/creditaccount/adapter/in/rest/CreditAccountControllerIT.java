@@ -257,12 +257,31 @@ class CreditAccountControllerIT {
         assertThat(firstBlock.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         assert422(blockUrl, "already blocked");
+        assertBlockedAuthorization422(accountId);
 
         ResponseEntity<CreditAccountResponse> unblock = restTemplate.postForEntity(
                 unblockUrl, new HttpEntity<>(Map.of(), createHeaders()), CreditAccountResponse.class);
         assertThat(unblock.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         assert422(unblockUrl, "not blocked");
+    }
+
+    private void assertBlockedAuthorization422(String accountId) {
+        var assign = restTemplate.postForEntity(
+                baseUrl + "/" + accountId + "/credit-limit",
+                new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()), CreditAccountResponse.class);
+        assertThat(assign.getStatusCode()).isEqualTo(HttpStatus.OK);
+        try {
+            restTemplate.postForEntity(baseUrl + "/" + accountId + "/purchases/authorizations",
+                    new HttpEntity<>(Map.of("authorizationId", UUID.randomUUID().toString(),
+                            "amount", "10.00", "merchantName", "Store"), createHeaders()),
+                    AuthorizePurchaseResponse.class);
+        } catch (HttpClientErrorException.UnprocessableContent exception) {
+            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+            assertThat(exception.getResponseBodyAs(ErrorResponse.class).error()).contains("blocked");
+            return;
+        }
+        throw new AssertionError("Expected HTTP 422 containing blocked");
     }
 
     private void assert422(String url, String message) {
