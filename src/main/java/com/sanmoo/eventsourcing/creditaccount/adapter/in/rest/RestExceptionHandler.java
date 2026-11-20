@@ -94,6 +94,12 @@ public class RestExceptionHandler {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
         .body(new ErrorResponse(ex.getMessage()));
   }
+
+  @ExceptionHandler(DomainException.class)
+  public ResponseEntity<ErrorResponse> handleDomainException(DomainException ex) {
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
+        .body(new ErrorResponse(ex.getMessage()));
+  }
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
         .body(new ErrorResponse(ex.getMessage()));
   }

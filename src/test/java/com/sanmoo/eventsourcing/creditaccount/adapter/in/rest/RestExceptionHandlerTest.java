@@ -16,11 +16,11 @@ class RestExceptionHandlerTest {
 
     @Test
     void blockingRuleExceptionsReturn422WithTheirMessages() {
-        assertUnprocessable(handler.handleAccountBlockingRule(
+        assertUnprocessable(handler.handleDomainException(
                 new AccountBlockedException("credit account is blocked")), "credit account is blocked");
-        assertUnprocessable(handler.handleAccountBlockingRule(
+        assertUnprocessable(handler.handleDomainException(
                 new AccountAlreadyBlockedException("credit account is already blocked")), "credit account is already blocked");
-        assertUnprocessable(handler.handleAccountBlockingRule(
+        assertUnprocessable(handler.handleDomainException(
                 new AccountNotBlockedException("credit account is not blocked")), "credit account is not blocked");
     }
 
