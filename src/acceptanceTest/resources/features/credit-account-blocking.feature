@@ -11,9 +11,9 @@ Funcionalidade: Bloqueio de conta de crédito
   Cenário: Pagamento é aceito enquanto a conta está bloqueada
     Dado que uma conta de crédito foi aberta
     E o limite de crédito da conta é "500.00"
-    Quando uma compra de "100.00" é autorizada no estabelecimento "Store"
+    E uma compra de "100.00" é autorizada no estabelecimento "Store"
+    Quando a conta é bloqueada
     E a autorização da compra é capturada
-    E a conta é bloqueada
     E o pagamento de "25.00" é recebido
     Então o pagamento deve ser aceito
 
