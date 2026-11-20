@@ -14,7 +14,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -241,6 +243,53 @@ class CreditAccountControllerIT {
         client.setErrorHandler((response) -> false);
         return client.postForEntity(baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
                 new HttpEntity<>(Map.of("amount", amount), createHeaders()), ErrorResponse.class);
+    }
+
+    @Test
+    void blockAndUnblockStateErrorsReturn422() {
+        var open = restTemplate.postForEntity(baseUrl, createRequest(null), CreditAccountResponse.class);
+        String accountId = open.getBody().creditAccountId();
+        String blockUrl = baseUrl + "/" + accountId + "/block";
+        String unblockUrl = baseUrl + "/" + accountId + "/unblock";
+
+        ResponseEntity<CreditAccountResponse> firstBlock = restTemplate.postForEntity(
+                blockUrl, new HttpEntity<>(Map.of(), createHeaders()), CreditAccountResponse.class);
+        assertThat(firstBlock.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assert422(blockUrl, "already blocked");
+
+        ResponseEntity<CreditAccountResponse> unblock = restTemplate.postForEntity(
+                unblockUrl, new HttpEntity<>(Map.of(), createHeaders()), CreditAccountResponse.class);
+        assertThat(unblock.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assert422(unblockUrl, "not blocked");
+    }
+
+    private void assert422(String url, String message) {
+        try {
+            restTemplate.postForEntity(url, new HttpEntity<>(Map.of(), createHeaders()), ErrorResponse.class);
+        } catch (HttpClientErrorException.UnprocessableContent exception) {
+            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+            assertThat(exception.getResponseBodyAs(ErrorResponse.class).error()).contains(message);
+            return;
+        }
+        throw new AssertionError("Expected HTTP 422 containing: " + message);
+    }
+
+    @Test
+    void blockReasonOver200CharactersReturns400() {
+        var open = restTemplate.postForEntity(baseUrl, createRequest(null), CreditAccountResponse.class);
+        String accountId = open.getBody().creditAccountId();
+        String blockUrl = baseUrl + "/" + accountId + "/block";
+        var request = new HttpEntity<>(Map.of("reason", "x".repeat(201)), createHeaders());
+        try {
+            restTemplate.postForEntity(blockUrl, request, ErrorResponse.class);
+        } catch (HttpClientErrorException.BadRequest exception) {
+            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            return;
+        }
+        throw new AssertionError("Expected HTTP 400 for a reason longer than 200 characters");
+    }
     }
 
     private HttpEntity<?> createRequest(Object body) {

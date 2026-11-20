@@ -18,6 +18,7 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountUnblocked;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import java.time.Instant;
 import java.util.List;
@@ -234,6 +235,21 @@ class JdbcEventStoreAdapterIT {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT event_type FROM event_store WHERE aggregate_type = ? AND aggregate_id = ?",
                 String.class, "CreditAccount", aggregateId)).isEqualTo("credit-account.blocked.v1");
+    }
+
+    @Test
+    void unblockEventIsStoredWithVersionedTypeAndReason() {
+        var aggregateId = UUID.randomUUID().toString();
+        var accountId = CreditAccountId.of(UUID.randomUUID());
+        var event = new CreditAccountUnblocked(accountId, "review complete", Instant.parse("2026-06-01T10:00:00Z"));
+
+        eventStore.appendEvents("CreditAccount", aggregateId, 0, List.of(event), Map.of());
+
+        EventEnvelope loaded = eventStore.loadEvents("CreditAccount", aggregateId).getFirst();
+        assertThat(loaded.event()).isEqualTo(event);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT event_type FROM event_store WHERE aggregate_type = ? AND aggregate_id = ?",
+                String.class, "CreditAccount", aggregateId)).isEqualTo("credit-account.unblocked.v1");
     }
 
     @Test
