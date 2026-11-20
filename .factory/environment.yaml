@@ -1,0 +1,8 @@
+# Environment the Software Factory prepares for this repository (read at the base tip, trusted as declared).
+# openjdk25-jdk provides javac + JRE for ./gradlew (the wrapper downloads Gradle itself). Testcontainers pulls its images by tag
+# at test time, so no images are pre-pulled. Alpine v3.23 keeps only the current build of a package: when this exact version
+# leaves the mirror, new preparations are refused until the version here is updated.
+schemaVersion: 1
+apk:
+  - name: openjdk25-jdk
+    version: 25.0.5.1_p2-r0
