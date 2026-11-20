@@ -92,12 +92,22 @@ public class CreditAccountController {
         if (request == null || request.amount() == null) {
             return null;
         }
+        final java.math.BigDecimal parsedAmount;
         try {
-            return Money.positive(new java.math.BigDecimal(request.amount()));
-        } catch (NumberFormatException | com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidMoneyException exception) {
-            throw new com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidMoneyException(
-                    "capture amount must be a valid positive amount no greater than authorized amount");
+            parsedAmount = new java.math.BigDecimal(request.amount());
+        } catch (NumberFormatException exception) {
+            throw invalidCaptureAmount(exception);
         }
+        try {
+            return Money.positive(parsedAmount);
+        } catch (com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidMoneyException exception) {
+            throw invalidCaptureAmount(exception);
+        }
+    }
+
+    private com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidMoneyException invalidCaptureAmount(Exception cause) {
+        return new com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidMoneyException(
+                "capture amount must be a valid positive amount no greater than authorized amount", cause);
     }
 
     @PostMapping("/{id}/purchases/authorizations/{authorizationId}/release")
