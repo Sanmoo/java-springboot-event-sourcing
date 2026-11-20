@@ -2,6 +2,7 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.*;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.*;
+import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.GetCreditAccountEventsOutput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.*;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.CreditLimitAlreadyAssignedException;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.*;
@@ -27,6 +28,7 @@ public class CreditAccountController {
     private final ReceivePaymentUseCase receivePaymentUseCase;
     private final GetCreditAccountUseCase getCreditAccountUseCase;
     private final ListCreditAccountsUseCase listCreditAccountsUseCase;
+    private final GetCreditAccountEventsUseCase getCreditAccountEventsUseCase;
 
     @PostMapping
     public ResponseEntity<CreditAccountResponse> openCreditAccount(
@@ -135,6 +137,19 @@ public class CreditAccountController {
         var input = new ReceivePaymentInput(idempotencyKey, creditAccountId, Money.positive(request.amount()));
         var output = receivePaymentUseCase.execute(input);
         return ResponseEntity.ok(CreditAccountDtoMapper.toResponse(output.account()));
+    }
+
+    @GetMapping("/{id}/events")
+    public ResponseEntity<AccountEventHistoryResponse> getAccountEvents(
+            @PathVariable String id,
+            @RequestParam(value = "fromVersion", defaultValue = "1") long fromVersion,
+            @RequestParam(value = "limit", defaultValue = "50") int limit) {
+        var input = new GetCreditAccountEventsInput(CreditAccountId.of(UUID.fromString(id)), fromVersion, limit);
+        GetCreditAccountEventsOutput output = getCreditAccountEventsUseCase.execute(input);
+        var items = output.items().stream()
+                .map(event -> new AccountEventResponse(event.version(), event.type(), event.occurredAt(), event.payload()))
+                .toList();
+        return ResponseEntity.ok(new AccountEventHistoryResponse(items, output.nextFromVersion()));
     }
 
     @GetMapping("/{id}")

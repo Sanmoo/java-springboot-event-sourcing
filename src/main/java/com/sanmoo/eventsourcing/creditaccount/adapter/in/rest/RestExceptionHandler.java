@@ -5,6 +5,7 @@ import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ProjectionNotR
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.IdempotencyConflictException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.InvalidPageSizeException;
+import com.sanmoo.eventsourcing.creditaccount.core.error.InvalidEventHistoryPageException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.ProjectionNotReadyException;
 import com.sanmoo.eventsourcing.creditaccount.core.error.SummaryNotFoundException;
 import com.sanmoo.eventsourcing.creditaccount.domain.error.AccountAlreadyExistsException;
@@ -57,6 +58,12 @@ public class RestExceptionHandler {
                 ex.getCurrentProjectionVersion(),
                 ex.getRequiredVersion()
         ));
+  }
+
+  @ExceptionHandler(InvalidEventHistoryPageException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidEventHistoryPage(InvalidEventHistoryPageException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse(ex.getMessage()));
   }
 
   @ExceptionHandler(InvalidPageSizeException.class)

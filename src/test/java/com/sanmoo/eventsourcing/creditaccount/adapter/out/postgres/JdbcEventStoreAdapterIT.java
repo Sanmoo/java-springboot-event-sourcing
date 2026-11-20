@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
+import com.sanmoo.eventsourcing.creditaccount.core.port.AccountEventPage;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
@@ -163,6 +164,36 @@ class JdbcEventStoreAdapterIT {
             GENERATED_IDS.add(id);
             return id;
         }
+    }
+
+    @Test
+    void accountHistoryIsOrderedAndPagedByAggregateVersion() {
+        UUID id = UUID.randomUUID();
+        var accountId = CreditAccountId.of(id);
+        var openedAt = Instant.parse("2025-01-01T00:00:00Z");
+        var limitAt = Instant.parse("2025-01-01T00:00:01Z");
+        eventStore.appendEvents("CreditAccount", id.toString(), 0,
+                List.of(new CreditAccountOpened(accountId, openedAt)), Map.of());
+        eventStore.appendEvents("CreditAccount", id.toString(), 1,
+                List.of(new com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned(
+                        accountId, com.sanmoo.eventsourcing.creditaccount.domain.model.Money.of("100.00"), limitAt)), Map.of());
+
+        AccountEventPage first = eventStore.readAccountEvents(id, 1, 1);
+        AccountEventPage second = eventStore.readAccountEvents(id, 2, 1);
+        AccountEventPage unknown = eventStore.readAccountEvents(UUID.randomUUID(), 1, 50);
+        assertThat(first.events()).hasSize(1);
+        assertThat(first.events().getFirst().version()).isEqualTo(1);
+        assertThat(first.events().getFirst().type()).isEqualTo("credit-account.opened.v1");
+        assertThat(first.events().getFirst().occurredAt()).isEqualTo(openedAt);
+        assertThat(first.events().getFirst().payload()).containsKey("creditAccountId");
+        assertThat(first.nextFromVersion()).isEqualTo(2L);
+        assertThat(second.events()).hasSize(1);
+        assertThat(second.events().getFirst().version()).isEqualTo(2);
+        assertThat(second.nextFromVersion()).isNull();
+        assertThat(unknown.events()).isEmpty();
+        assertThat(unknown.nextFromVersion()).isNull();
+        assertThat(unknown.accountExists()).isFalse();
+        assertThat(first.accountExists()).isTrue();
     }
 
     @Test
