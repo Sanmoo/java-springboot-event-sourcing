@@ -17,6 +17,14 @@ Funcionalidade: Bloqueio de conta de crédito
     E um pagamento de "25.00" é recebido
     Então o pagamento deve ser aceito
 
+  Cenário: Liberação de autorização existente é aceita enquanto a conta está bloqueada
+    Dado que uma conta de crédito foi aberta
+    E o limite de crédito da conta é "500.00"
+    E uma compra de "100.00" é autorizada no estabelecimento "Store"
+    Quando a conta é bloqueada
+    E a autorização da compra é liberada
+    Então a liberação deve ser aceita
+
   Cenário: Conta desbloqueada aceita novas autorizações
     Dado que uma conta de crédito foi aberta
     E o limite de crédito da conta é "500.00"

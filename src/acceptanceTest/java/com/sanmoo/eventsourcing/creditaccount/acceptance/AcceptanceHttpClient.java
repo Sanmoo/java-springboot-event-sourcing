@@ -115,6 +115,19 @@ public class AcceptanceHttpClient {
         return response.getBody();
     }
 
+    public Map<String, Object> releasePurchase(UUID accountId, UUID authorizationId) {
+        ensureInitialized();
+        HttpHeaders headers = headersWithIdempotencyKey();
+        ResponseEntity<Map<String, Object>> response = rest.exchange(
+                baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/release",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of(), headers),
+                new ParameterizedTypeReference<>() {}
+        );
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
     public Map<String, Object> receivePayment(UUID accountId, String amount) {
         ensureInitialized();
         HttpHeaders headers = headersWithIdempotencyKey();

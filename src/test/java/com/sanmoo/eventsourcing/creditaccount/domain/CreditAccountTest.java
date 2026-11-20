@@ -105,6 +105,16 @@ class CreditAccountTest {
                 .isInstanceOf(AccountBlockedException.class).hasMessageContaining("blocked");
         assertThat(account.capturePurchase(authorizationId, Instant.parse("2026-06-01T10:04:00Z")))
                 .containsExactly(new PurchaseCapturedV2(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:04:00Z")));
+        AuthorizationId releaseId = AuthorizationId.of(UUID.randomUUID());
+        CreditAccount withOpenRelease = CreditAccount.rehydrate(accountId, List.of(
+                new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
+                new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
+                new PurchaseAuthorized(accountId, releaseId, Money.of("15.00"), "Book Store", Instant.parse("2026-06-01T10:02:00Z")),
+                new CreditAccountBlocked(accountId, null, Instant.parse("2026-06-01T10:03:00Z"))
+        ));
+        assertThat(withOpenRelease.releasePurchaseAuthorization(releaseId, Instant.parse("2026-06-01T10:04:45Z")))
+                .containsExactly(new PurchaseAuthorizationReleased(accountId, releaseId, Money.of("15.00"), Instant.parse("2026-06-01T10:04:45Z")));
+        assertThat(withOpenRelease.snapshot().blocked()).isTrue();
         assertThat(account.receivePayment(Money.of("10.00"), Instant.parse("2026-06-01T10:05:00Z")))
                 .containsExactly(new PaymentReceived(accountId, Money.of("10.00"), Instant.parse("2026-06-01T10:05:00Z")));
         assertThat(account.snapshot().blocked()).isTrue();

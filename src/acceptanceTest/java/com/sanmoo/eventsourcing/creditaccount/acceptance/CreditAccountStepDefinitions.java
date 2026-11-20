@@ -84,6 +84,19 @@ public class CreditAccountStepDefinitions {
         }
     }
 
+    @Quando("a autorização da compra é liberada")
+    public void liberarCompra() {
+        Map<String, Object> response = http.releasePurchase(context.getCreditAccountId(), context.getAuthorizationId());
+        if (response != null && response.containsKey("projectedVersion")) {
+            context.setLastProjectedVersion(((Number) response.get("projectedVersion")).longValue());
+        }
+    }
+
+    @Então("a liberação deve ser aceita")
+    public void liberacaoAceita() {
+        assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
+    }
+
     @Quando("o pagamento de {string} é recebido")
     public void receberPagamentoBloqueado(String amount) {
         Map<String, Object> response = http.receivePayment(context.getCreditAccountId(), amount);
