@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sanmoo.eventsourcing.creditaccount.core.error.ConcurrencyConflictException;
+import com.sanmoo.eventsourcing.creditaccount.core.port.AccountEvent;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AccountEventPage;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AppendResult;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
@@ -213,10 +214,10 @@ class JdbcEventStoreAdapterIT {
 
         AccountEventPage first = eventStore.readAccountEvents(id, 1, 2);
 
-        assertThat(first.events()).extracting(event -> event.version()).containsExactly(1L, 2L);
+        assertThat(first.events()).extracting(AccountEvent::version).containsExactly(1L, 2L);
         assertThat(first.nextFromVersion()).isEqualTo(4L);
         AccountEventPage second = eventStore.readAccountEvents(id, first.nextFromVersion(), 2);
-        assertThat(second.events()).extracting(event -> event.version()).containsExactly(4L);
+        assertThat(second.events()).extracting(AccountEvent::version).containsExactly(4L);
         assertThat(second.nextFromVersion()).isNull();
     }
 
