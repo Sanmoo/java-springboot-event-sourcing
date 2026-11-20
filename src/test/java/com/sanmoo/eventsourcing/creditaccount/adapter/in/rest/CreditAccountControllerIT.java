@@ -39,6 +39,10 @@ class CreditAccountControllerIT {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM outbox_deliveries");
+        jdbcTemplate.update("DELETE FROM outbox_events");
+        jdbcTemplate.update("DELETE FROM event_store");
+        jdbcTemplate.update("DELETE FROM credit_account_summary");
         restTemplate = new RestTemplate();
         baseUrl = "http://localhost:" + port + "/credit-accounts";
     }
