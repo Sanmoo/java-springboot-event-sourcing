@@ -12,9 +12,9 @@ Funcionalidade: Bloqueio de conta de crédito
     Dado que uma conta de crédito foi aberta
     E o limite de crédito da conta é "500.00"
     E uma compra de "100.00" é autorizada no estabelecimento "Store"
-    Quando a conta é bloqueada
     E a autorização da compra é capturada
-    E o pagamento de "25.00" é recebido
+    Quando a conta é bloqueada
+    E um pagamento de "25.00" é recebido
     Então o pagamento deve ser aceito
 
   Cenário: Conta desbloqueada aceita novas autorizações
@@ -24,3 +24,14 @@ Funcionalidade: Bloqueio de conta de crédito
     E a conta é desbloqueada
     E uma compra de "100.00" é autorizada no estabelecimento "Store"
     Então a autorização deve ser aceita
+
+  Cenário: Bloquear uma conta já bloqueada retorna 422
+    Dado que uma conta de crédito foi aberta
+    E a conta é bloqueada
+    Quando a conta é bloqueada
+    Então a API deve retornar status 422 com mensagem contendo "already blocked"
+
+  Cenário: Desbloquear uma conta ativa retorna 422
+    Dado que uma conta de crédito foi aberta
+    Quando a conta é desbloqueada
+    Então a API deve retornar status 422 com mensagem contendo "not blocked"
