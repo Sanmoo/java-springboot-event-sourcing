@@ -19,7 +19,7 @@ public class CapturePurchaseUseCase {
                 "CapturePurchase",
                 input.creditAccountId(),
                 input,
-                account -> account.capturePurchase(input.authorizationId(), now()),
+                account -> account.capturePurchase(input.authorizationId(), input.amount(), now()),
                 result -> new CapturePurchaseOutput(result.output(), result.replayed())
         );
     }

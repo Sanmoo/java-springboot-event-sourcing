@@ -16,7 +16,8 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitChanged;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorized;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCaptured;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV1;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV2;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorizationReleased;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
@@ -104,10 +105,57 @@ class CreditAccountTest {
 
         var events = account.capturePurchase(authorizationId, Instant.parse("2026-06-01T10:03:00Z"));
 
-        assertThat(events).containsExactly(new PurchaseCaptured(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:03:00Z")));
+        assertThat(events).containsExactly(new PurchaseCapturedV2(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:03:00Z")));
         assertThat(account.snapshot().outstandingBalance()).isEqualTo(Money.of("25.00"));
         assertThat(account.snapshot().authorizedAmount()).isEqualTo(Money.zero());
         assertThat(account.version()).isEqualTo(4L);
+    }
+
+
+    @Test
+    void partialCaptureClosesAuthorizationAndReleasesRemainder() {
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
+        CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
+                new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
+                new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
+                new PurchaseAuthorized(accountId, authorizationId, Money.of("25.00"), "Book Store", Instant.parse("2026-06-01T10:02:00Z"))));
+
+        var events = account.capturePurchase(authorizationId, Money.of("10.00"), Instant.parse("2026-06-01T10:03:00Z"));
+
+        assertThat(events).containsExactly(new PurchaseCapturedV2(accountId, authorizationId, Money.of("10.00"), Instant.parse("2026-06-01T10:03:00Z")));
+        assertThat(account.snapshot().outstandingBalance()).isEqualTo(Money.of("10.00"));
+        assertThat(account.snapshot().authorizedAmount()).isEqualTo(Money.zero());
+        assertThat(account.snapshot().availableLimit()).isEqualTo(Money.of("90.00"));
+        assertThat(account.snapshot().authorizations().get(authorizationId).status()).isEqualTo(PurchaseAuthorizationStatus.CAPTURED);
+    }
+
+    @Test
+    void rejectsPartialCaptureAboveAuthorization() {
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
+        CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
+                new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
+                new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
+                new PurchaseAuthorized(accountId, authorizationId, Money.of("25.00"), "Book Store", Instant.parse("2026-06-01T10:02:00Z"))));
+
+        assertThatThrownBy(() -> account.capturePurchase(authorizationId, Money.of("26.00"), Instant.now()))
+                .isInstanceOf(InvalidMoneyException.class);
+    }
+
+    @Test
+    void rehydratesLegacyCaptureAsFullCapture() {
+        CreditAccountId accountId = CreditAccountId.of(UUID.randomUUID());
+        AuthorizationId authorizationId = AuthorizationId.of(UUID.randomUUID());
+        CreditAccount account = CreditAccount.rehydrate(accountId, List.of(
+                new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
+                new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
+                new PurchaseAuthorized(accountId, authorizationId, Money.of("25.00"), "Book Store", Instant.parse("2026-06-01T10:02:00Z")),
+                new PurchaseCapturedV1(accountId, authorizationId, Instant.parse("2026-06-01T10:03:00Z"))));
+
+        assertThat(account.snapshot().outstandingBalance()).isEqualTo(Money.of("25.00"));
+        assertThat(account.snapshot().authorizedAmount()).isEqualTo(Money.zero());
+        assertThat(account.snapshot().availableLimit()).isEqualTo(Money.of("75.00"));
     }
 
     @Test
@@ -165,7 +213,7 @@ class CreditAccountTest {
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
                 new PurchaseAuthorized(accountId, authorizationId, Money.of("25.00"), "Book Store", Instant.parse("2026-06-01T10:02:00Z")),
-                new PurchaseCaptured(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:03:00Z"))
+                new PurchaseCapturedV2(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:03:00Z"))
         ));
 
         assertThatThrownBy(() -> account.releasePurchaseAuthorization(authorizationId, Instant.now()))
@@ -325,7 +373,7 @@ class CreditAccountTest {
                 new CreditAccountOpened(accountId, Instant.parse("2026-06-01T10:00:00Z")),
                 new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2026-06-01T10:01:00Z")),
                 new PurchaseAuthorized(accountId, authorizationId, Money.of("50.00"), "Store", Instant.parse("2026-06-01T10:02:00Z")),
-                new PurchaseCaptured(accountId, authorizationId, Money.of("50.00"), Instant.parse("2026-06-01T10:03:00Z"))
+                new PurchaseCapturedV2(accountId, authorizationId, Money.of("50.00"), Instant.parse("2026-06-01T10:03:00Z"))
         ));
 
         var events = account.receivePayment(Money.of("25.00"), Instant.parse("2026-06-01T10:04:00Z"));

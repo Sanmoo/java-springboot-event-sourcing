@@ -5,7 +5,8 @@ import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitChanged;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorized;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCaptured;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV1;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV2;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorizationReleased;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PaymentReceived;
 import java.util.Map;
@@ -24,7 +25,8 @@ public class EventTypeMapper {
             "credit-account.credit-limit-assigned.v1", CreditLimitAssigned.class,
             "credit-account.credit-limit-changed.v1", CreditLimitChanged.class,
             "purchase.authorized.v1", PurchaseAuthorized.class,
-            "purchase.captured.v1", PurchaseCaptured.class,
+            "purchase.captured.v1", PurchaseCapturedV1.class,
+            "purchase.captured.v2", PurchaseCapturedV2.class,
             "purchase.authorization-released.v1", PurchaseAuthorizationReleased.class,
             "payment.received.v1", PaymentReceived.class
     );

@@ -9,7 +9,7 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.IdempotencyRepository;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseAuthorized;
-import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCaptured;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV2;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
@@ -61,7 +61,7 @@ class ReceivePaymentUseCaseTest {
                 new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 3,
                         new PurchaseAuthorized(creditAccountId, authorizationId, Money.of("100.00"), "Store", now), now, Map.of()),
                 new EventEnvelope(UUID.randomUUID(), "CreditAccount", accountId.toString(), 4,
-                        new PurchaseCaptured(creditAccountId, authorizationId, Money.of("100.00"), now), now, Map.of())
+                        new PurchaseCapturedV2(creditAccountId, authorizationId, Money.of("100.00"), now), now, Map.of())
         ));
         when(eventStore.appendEvents(any(), any(), anyLong(), anyList(), anyMap()))
                 .thenReturn(new AppendResult(5L));

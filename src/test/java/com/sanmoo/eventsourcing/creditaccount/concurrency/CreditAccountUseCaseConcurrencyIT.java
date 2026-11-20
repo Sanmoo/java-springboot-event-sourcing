@@ -181,7 +181,7 @@ class CreditAccountUseCaseConcurrencyIT {
                     return capturePurchaseUseCase.execute(new CapturePurchaseInput(
                             "auth-capture-key-capture",
                             accountId,
-                            AuthorizationId.of(UUID.fromString(authorizationId))
+                            AuthorizationId.of(UUID.fromString(authorizationId)), null
                     )).account();
                 } catch (AuthorizationNotFoundException e) {
                     lastError = e;
@@ -250,7 +250,7 @@ class CreditAccountUseCaseConcurrencyIT {
 
         var commands = List.of(
                 (Callable<CreditAccountOutput>) () -> capturePurchaseUseCase.execute(new CapturePurchaseInput(
-                        "mixed-capture", accountId, AuthorizationId.of(UUID.fromString(authId)))).account(),
+                        "mixed-capture", accountId, AuthorizationId.of(UUID.fromString(authId)), null)).account(),
                 () -> receivePaymentUseCase.execute(new ReceivePaymentInput(
                         "mixed-payment", accountId, Money.of("50.00"))).account(),
                 () -> releasePurchaseAuthorizationUseCase.execute(new ReleasePurchaseAuthorizationInput(

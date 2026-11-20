@@ -9,6 +9,10 @@ import com.sanmoo.eventsourcing.creditaccount.core.port.EventEnvelope;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
 import com.sanmoo.eventsourcing.creditaccount.core.port.UniqueIdGenerator;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV1;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.PurchaseCapturedV2;
+import com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId;
+import com.sanmoo.eventsourcing.creditaccount.domain.model.Money;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
 import java.time.Instant;
 import java.util.List;
@@ -101,6 +105,30 @@ class JdbcEventStoreAdapterIT {
         CreditAccountOpened loaded = (CreditAccountOpened) envelope.event();
         assertThat(loaded.creditAccountId()).isEqualTo(creditAccountId);
         assertThat(loaded.occurredAt()).isEqualTo(occurredAt);
+    }
+
+    @Test
+    void appendThenLoadKeepsCapturedEventVersionAndAmount() {
+        var accountId = CreditAccountId.of(UUID.randomUUID());
+        var authorizationId = AuthorizationId.of(UUID.randomUUID());
+        var occurredAt = Instant.parse("2026-06-01T10:03:00Z");
+        var fullLegacy = new PurchaseCapturedV1(accountId, authorizationId, occurredAt);
+        var partial = new PurchaseCapturedV2(accountId, authorizationId, Money.of("12.50"), occurredAt);
+        String legacyAggregate = UUID.randomUUID().toString();
+        String partialAggregate = UUID.randomUUID().toString();
+        eventStore.appendEvents("CreditAccount", legacyAggregate, 0, List.of(fullLegacy), Map.of());
+        eventStore.appendEvents("CreditAccount", partialAggregate, 0, List.of(partial), Map.of());
+        jdbcTemplate.update("UPDATE event_store SET payload = ?::jsonb WHERE aggregate_id = ?", "{\"creditAccountId\":{\"value\":\"" + accountId.value() + "\"},\"authorizationId\":{\"value\":\"" + authorizationId.value() + "\"},\"occurredAt\":\"" + occurredAt + "\"}", legacyAggregate);
+        jdbcTemplate.update("UPDATE outbox_events SET payload = ?::jsonb WHERE aggregate_id = ?", "{\"creditAccountId\":{\"value\":\"" + accountId.value() + "\"},\"authorizationId\":{\"value\":\"" + authorizationId.value() + "\"},\"occurredAt\":\"" + occurredAt + "\"}", legacyAggregate);
+
+        var legacyEnvelope = eventStore.loadEvents("CreditAccount", legacyAggregate).getFirst();
+        var partialEnvelope = eventStore.loadEvents("CreditAccount", partialAggregate).getFirst();
+        assertThat(legacyEnvelope.event()).isEqualTo(fullLegacy);
+        assertThat(partialEnvelope.event()).isEqualTo(partial);
+        assertThat(jdbcTemplate.queryForObject("SELECT event_type FROM event_store WHERE aggregate_id = ?", String.class, legacyAggregate))
+                .isEqualTo("purchase.captured.v1");
+        assertThat(jdbcTemplate.queryForObject("SELECT event_type FROM event_store WHERE aggregate_id = ?", String.class, partialAggregate))
+                .isEqualTo("purchase.captured.v2");
     }
 
     @TestConfiguration

@@ -24,6 +24,25 @@ public class CreditAccountSummaryProjector {
                 List.of(), 0L, null, event.occurredAt());
     }
 
+    private CreditAccountSummary applyCaptured(CreditAccountSummary s,
+                                               com.sanmoo.eventsourcing.creditaccount.domain.model.AuthorizationId authorizationId,
+                                               BigDecimal capturedAmount, java.time.Instant occurredAt, UUID lastEventId) {
+        List<CreditAccountSummary.AuthorizationSummary> updated = s.authorizations().stream()
+                .map(a -> a.authorizationId().equals(authorizationId.value())
+                        ? new CreditAccountSummary.AuthorizationSummary(a.authorizationId(), a.amount(), "CAPTURED", a.merchantName()) : a)
+                .toList();
+        BigDecimal authorizedAmount = new BigDecimal(s.authorizedAmount());
+        BigDecimal authorizationAmount = s.authorizations().stream()
+                .filter(a -> a.authorizationId().equals(authorizationId.value()))
+                .map(a -> new BigDecimal(a.amount())).findFirst().orElse(capturedAmount);
+        BigDecimal releasedAmount = authorizationAmount.subtract(capturedAmount);
+        BigDecimal outstanding = new BigDecimal(s.outstandingBalance()).add(capturedAmount);
+        BigDecimal newAuthorized = authorizedAmount.subtract(authorizationAmount);
+        BigDecimal available = new BigDecimal(s.availableLimit()).add(releasedAmount);
+        return new CreditAccountSummary(s.creditAccountId(), s.opened(), s.creditLimit(), outstanding.toPlainString(),
+                newAuthorized.toPlainString(), available.toPlainString(), updated, s.projectedVersion() + 1, lastEventId, occurredAt);
+    }
+
     private CreditAccountSummary apply(CreditAccountSummary s, CreditAccountEvent event, UUID lastEventId) {
         if (event instanceof CreditAccountOpened opened) {
             return new CreditAccountSummary(
@@ -63,20 +82,14 @@ public class CreditAccountSummaryProjector {
                     s.outstandingBalance(), newAuthorized.toPlainString(), newAvailable.toPlainString(),
                     auths, s.projectedVersion() + 1, lastEventId, auth.occurredAt());
         }
-        if (event instanceof PurchaseCaptured captured) {
-            List<CreditAccountSummary.AuthorizationSummary> updated = s.authorizations().stream()
-                    .map(a -> a.authorizationId().equals(captured.authorizationId().value())
-                            ? new CreditAccountSummary.AuthorizationSummary(
-                                    a.authorizationId(), a.amount(), "CAPTURED", a.merchantName())
-                            : a)
-                    .toList();
-            BigDecimal capturedAmount = captured.amount().amount();
-            BigDecimal newOutstanding = new BigDecimal(s.outstandingBalance()).add(capturedAmount);
-            BigDecimal newAuthorized = new BigDecimal(s.authorizedAmount()).subtract(capturedAmount);
-            return new CreditAccountSummary(
-                    s.creditAccountId(), s.opened(), s.creditLimit(),
-                    newOutstanding.toPlainString(), newAuthorized.toPlainString(), s.availableLimit(),
-                    updated, s.projectedVersion() + 1, lastEventId, captured.occurredAt());
+        if (event instanceof PurchaseCapturedV1 captured) {
+            BigDecimal amount = new BigDecimal(s.authorizations().stream()
+                    .filter(a -> a.authorizationId().equals(captured.authorizationId().value()))
+                    .findFirst().orElseThrow().amount());
+            return applyCaptured(s, captured.authorizationId(), amount, captured.occurredAt(), lastEventId);
+        }
+        if (event instanceof PurchaseCapturedV2 captured) {
+            return applyCaptured(s, captured.authorizationId(), captured.amount().amount(), captured.occurredAt(), lastEventId);
         }
         if (event instanceof PurchaseAuthorizationReleased released) {
             List<CreditAccountSummary.AuthorizationSummary> updated = s.authorizations().stream()
