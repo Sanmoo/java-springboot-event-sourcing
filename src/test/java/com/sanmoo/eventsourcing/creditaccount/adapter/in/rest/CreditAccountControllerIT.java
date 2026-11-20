@@ -192,7 +192,7 @@ class CreditAccountControllerIT {
         // Project events before reading summary
         projectionWorker.processOnce(50);
 
-        var getAfterRelease = restTemplate.getForEntity(baseUrl + "/" + accountId, CreditAccountResponse.class);
+        var getAfterRelease = restTemplate.getForEntity(baseUrl + "/" + accountId + "?minVersion=3", CreditAccountResponse.class);
         assertThat(getAfterRelease.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(getAfterRelease.getBody().authorizedAmount()).isEqualTo("0.00");
         assertThat(getAfterRelease.getBody().availableLimit()).isEqualTo("500.00");

@@ -159,9 +159,6 @@ public class AcceptanceHttpClient {
         context.setLastResponse(response);
         return response.getBody();
     }
-        context.setLastResponse(response);
-        return response.getBody();
-    }
 
     public Map<String, Object> getSummary(UUID accountId, Long minVersion) {
         ensureInitialized();
