@@ -82,10 +82,22 @@ public class CreditAccountController {
             @RequestBody(required = false) CapturePurchaseRequest request) {
         var creditAccountId = CreditAccountId.of(UUID.fromString(id));
         var authId = AuthorizationId.of(UUID.fromString(authorizationId));
-        var amount = request == null || request.amount() == null ? null : Money.positive(new java.math.BigDecimal(request.amount()));
+        var amount = parseCaptureAmount(request);
         var input = new CapturePurchaseInput(idempotencyKey, creditAccountId, authId, amount);
         var output = capturePurchaseUseCase.execute(input);
         return ResponseEntity.ok(CreditAccountDtoMapper.toResponse(output.account()));
+    }
+
+    private Money parseCaptureAmount(CapturePurchaseRequest request) {
+        if (request == null || request.amount() == null) {
+            return null;
+        }
+        try {
+            return Money.positive(new java.math.BigDecimal(request.amount()));
+        } catch (NumberFormatException | com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidMoneyException exception) {
+            throw new com.sanmoo.eventsourcing.creditaccount.domain.error.InvalidMoneyException(
+                    "capture amount must be a valid positive amount no greater than authorized amount");
+        }
     }
 
     @PostMapping("/{id}/purchases/authorizations/{authorizationId}/release")

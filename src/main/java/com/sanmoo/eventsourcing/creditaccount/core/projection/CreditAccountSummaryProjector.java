@@ -35,10 +35,10 @@ public class CreditAccountSummaryProjector {
         BigDecimal authorizationAmount = s.authorizations().stream()
                 .filter(a -> a.authorizationId().equals(authorizationId.value()))
                 .map(a -> new BigDecimal(a.amount())).findFirst().orElse(capturedAmount);
+        BigDecimal releasedAmount = authorizationAmount.subtract(capturedAmount);
         BigDecimal outstanding = new BigDecimal(s.outstandingBalance()).add(capturedAmount);
         BigDecimal newAuthorized = authorizedAmount.subtract(authorizationAmount);
-        BigDecimal limit = s.creditLimit() == null ? BigDecimal.ZERO : new BigDecimal(s.creditLimit());
-        BigDecimal available = limit.subtract(outstanding).subtract(newAuthorized);
+        BigDecimal available = new BigDecimal(s.availableLimit()).add(releasedAmount);
         return new CreditAccountSummary(s.creditAccountId(), s.opened(), s.creditLimit(), outstanding.toPlainString(),
                 newAuthorized.toPlainString(), available.toPlainString(), updated, s.projectedVersion() + 1, lastEventId, occurredAt);
     }

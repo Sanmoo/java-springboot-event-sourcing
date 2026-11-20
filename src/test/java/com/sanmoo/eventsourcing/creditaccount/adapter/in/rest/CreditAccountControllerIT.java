@@ -3,6 +3,7 @@ package com.sanmoo.eventsourcing.creditaccount.adapter.in.rest;
 import com.sanmoo.eventsourcing.creditaccount.TestcontainersConfiguration;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.AuthorizePurchaseResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.CreditAccountResponse;
+import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ErrorResponse;
 import com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -131,6 +132,26 @@ class CreditAccountControllerIT {
     }
 
     @Test
+    void invalidCaptureAmountUsesUnprocessableErrorFormat() {
+        var openResponse = restTemplate.postForEntity(baseUrl, createRequest(null), CreditAccountResponse.class);
+        String accountId = openResponse.getBody().creditAccountId();
+        restTemplate.postForEntity(baseUrl + "/" + accountId + "/credit-limit",
+                new HttpEntity<>(Map.of("limit", "500.00"), createHeaders()), CreditAccountResponse.class);
+        String authorizationId = UUID.randomUUID().toString();
+        restTemplate.postForEntity(baseUrl + "/" + accountId + "/purchases/authorizations",
+                new HttpEntity<>(Map.of("authorizationId", authorizationId, "amount", "100.00", "merchantName", "Store"), createHeaders()),
+                AuthorizePurchaseResponse.class);
+
+        var malformed = captureErrorResponse(accountId, authorizationId, "not-money");
+        var zero = captureErrorResponse(accountId, authorizationId, "0.00");
+
+        assertThat(malformed.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+        assertThat(malformed.getBody().error()).contains("capture amount");
+        assertThat(zero.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+        assertThat(zero.getBody().error()).contains("capture amount");
+    }
+
+    @Test
     void authorizesAndReleasesUsingReturnedAuthorizationId() {
         var openResponse = restTemplate.postForEntity(baseUrl, createRequest(null), CreditAccountResponse.class);
         assertThat(openResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -210,6 +231,13 @@ class CreditAccountControllerIT {
         );
         assertThat(response2.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response2.getBody()).isEqualTo(response1.getBody());
+    }
+
+    private org.springframework.http.ResponseEntity<ErrorResponse> captureErrorResponse(String accountId, String authorizationId, String amount) {
+        var client = new RestTemplate();
+        client.setErrorHandler((response) -> false);
+        return client.postForEntity(baseUrl + "/" + accountId + "/purchases/authorizations/" + authorizationId + "/capture",
+                new HttpEntity<>(Map.of("amount", amount), createHeaders()), ErrorResponse.class);
     }
 
     private HttpEntity<?> createRequest(Object body) {
