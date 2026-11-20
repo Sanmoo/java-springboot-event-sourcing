@@ -39,7 +39,7 @@ public class CreditAccountSummaryProjector {
         BigDecimal outstanding = new BigDecimal(s.outstandingBalance()).add(capturedAmount);
         BigDecimal newAuthorized = authorizedAmount.subtract(authorizationAmount);
         BigDecimal available = new BigDecimal(s.availableLimit()).add(releasedAmount);
-        return new CreditAccountSummary(s.creditAccountId(), s.opened(), s.creditLimit(), outstanding.toPlainString(),
+        return new CreditAccountSummary(s.creditAccountId(), s.opened(), s.status(), s.creditLimit(), outstanding.toPlainString(),
                 newAuthorized.toPlainString(), available.toPlainString(), updated, s.projectedVersion() + 1, lastEventId, occurredAt);
     }
 
@@ -100,7 +100,6 @@ public class CreditAccountSummaryProjector {
         }
         if (event instanceof PurchaseCapturedV2 captured) {
             return applyCaptured(s, captured.authorizationId(), captured.amount().amount(), captured.occurredAt(), lastEventId);
-        }
         }
         if (event instanceof PurchaseAuthorizationReleased released) {
             List<CreditAccountSummary.AuthorizationSummary> updated = s.authorizations().stream()

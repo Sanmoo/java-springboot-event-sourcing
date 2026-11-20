@@ -104,7 +104,7 @@ class CreditAccountTest {
         assertThatThrownBy(() -> account.authorizePurchase(AuthorizationId.of(UUID.randomUUID()), Money.of("10.00"), "Shop", Instant.now()))
                 .isInstanceOf(AccountBlockedException.class).hasMessageContaining("blocked");
         assertThat(account.capturePurchase(authorizationId, Instant.parse("2026-06-01T10:04:00Z")))
-                .containsExactly(new PurchaseCaptured(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:04:00Z")));
+                .containsExactly(new PurchaseCapturedV2(accountId, authorizationId, Money.of("25.00"), Instant.parse("2026-06-01T10:04:00Z")));
         assertThat(account.receivePayment(Money.of("10.00"), Instant.parse("2026-06-01T10:05:00Z")))
                 .containsExactly(new PaymentReceived(accountId, Money.of("10.00"), Instant.parse("2026-06-01T10:05:00Z")));
         assertThat(account.snapshot().blocked()).isTrue();

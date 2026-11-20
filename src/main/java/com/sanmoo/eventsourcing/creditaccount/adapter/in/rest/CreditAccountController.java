@@ -175,7 +175,6 @@ public class CreditAccountController {
         var output = unblockCreditAccountUseCase.execute(new UnblockCreditAccountInput(idempotencyKey, accountId, reason));
         return ResponseEntity.ok(CreditAccountDtoMapper.toResponse(output.account()));
     }
-    }
 
     @GetMapping("/{id}")
     public ResponseEntity<CreditAccountResponse> getAccount(

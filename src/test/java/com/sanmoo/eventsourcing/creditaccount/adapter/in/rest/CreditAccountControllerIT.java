@@ -309,7 +309,6 @@ class CreditAccountControllerIT {
         }
         throw new AssertionError("Expected HTTP 400 for a reason longer than 200 characters");
     }
-    }
 
     private HttpEntity<?> createRequest(Object body) {
         return new HttpEntity<>(body, createHeaders());

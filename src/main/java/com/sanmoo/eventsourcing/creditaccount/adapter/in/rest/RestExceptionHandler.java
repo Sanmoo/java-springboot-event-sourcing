@@ -100,7 +100,4 @@ public class RestExceptionHandler {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
         .body(new ErrorResponse(ex.getMessage()));
   }
-    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
-        .body(new ErrorResponse(ex.getMessage()));
-  }
 }
