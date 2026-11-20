@@ -1,22 +1,7 @@
-# Proposed `.factory/environment.yaml` for Sanmoo/java-springboot-event-sourcing (ticket 44; merged by the operator when pilot 2 is
-# prepared, ticket 54). NOT pushed and no pull request opened by the agent.
-#
-# How the version was chosen (2026-11-19):
-# - Guest Alpine release: `src/sandbox/guest-profile/alpine-docker-vfs.json` → alpine.version 3.23.7, branch v3.23, mirror
-#   https://dl-cdn.alpinelinux.org/alpine (the preparation installs only from <mirror>/v3.23/main and /community).
-# - The repository README requires JDK 25. Public Alpine package index, read-only query
-#   https://pkgs.alpinelinux.org/packages?name=openjdk25*&branch=v3.23&arch=x86_64 : nine openjdk25* packages in `community`,
-#   all at version 25.0.5.1_p2-r0 (build 2026-11-18): openjdk25, -jdk, -jre, -jre-headless, -jmods, -demos, -doc, -src, -static-libs.
-#   `openjdk25-jdk` (javac + the JRE, what Gradle toolchains and `./gradlew` need) is the one declared; its dependencies (jre, jmods,
-#   java-common, ...) are resolved by apk and recorded in the resolved manifest.
-# - Gradle itself is NOT declared: the project uses the Gradle wrapper (`./gradlew`), which downloads its pinned distribution.
-# - No images are declared: Testcontainers (Ryuk, PostgreSQL) references its images by TAG, and an image pulled by digest has no tag, so
-#   a pre-pull by digest would not be used by Testcontainers; the guest Docker pulls them on the first run (mediated HTTPS). Declare
-#   them here only if the project switches its image references to digests.
-#
-# Caveat: Alpine stable branches keep only the CURRENT build of a package in the mirror. When v3.23 publishes a newer openjdk25 build
-# (e.g. a security update), 25.0.5.1_p2-r0 disappears and a NEW preparation is refused (by design: no version swap); environments
-# already prepared keep working. Then update this version on the base branch (new hash → new base disk for new Works).
+# Environment the Software Factory prepares for this repository (read at the base tip, trusted as declared).
+# openjdk25-jdk provides javac + JRE for ./gradlew (the wrapper downloads Gradle itself). Testcontainers pulls its images by tag
+# at test time, so no images are pre-pulled. Alpine v3.23 keeps only the current build of a package: when this exact version
+# leaves the mirror, new preparations are refused until the version here is updated.
 schemaVersion: 1
 apk:
   - name: openjdk25-jdk
