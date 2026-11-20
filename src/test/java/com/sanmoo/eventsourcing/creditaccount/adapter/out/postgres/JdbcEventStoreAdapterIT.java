@@ -178,8 +178,7 @@ class JdbcEventStoreAdapterIT {
         eventStore.appendEvents("CreditAccount", id.toString(), 0,
                 List.of(new CreditAccountOpened(accountId, openedAt)), Map.of());
         eventStore.appendEvents("CreditAccount", id.toString(), 1,
-                List.of(new com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned(
-                        accountId, com.sanmoo.eventsourcing.creditaccount.domain.model.Money.of("100.00"), limitAt)), Map.of());
+                List.of(new CreditLimitAssigned(accountId, Money.of("100.00"), limitAt)), Map.of());
 
         AccountEventPage first = eventStore.readAccountEvents(id, 1, 1);
         AccountEventPage second = eventStore.readAccountEvents(id, 2, 1);
