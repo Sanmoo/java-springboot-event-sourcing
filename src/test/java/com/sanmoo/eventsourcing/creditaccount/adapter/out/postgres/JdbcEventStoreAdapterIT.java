@@ -221,7 +221,7 @@ class JdbcEventStoreAdapterIT {
 
         assertThat(first.events()).extracting(AccountEvent::version).containsExactly(3L);
         assertThat(first.events()).extracting(AccountEvent::type).containsExactly("payment.received.v1");
-        assertThat(first.nextFromVersion()).isEqualTo(4L);
+        assertThat(first.nextFromVersion()).isEqualTo(5L);
         assertThat(second.events()).extracting(AccountEvent::version).containsExactly(5L);
         assertThat(second.events()).extracting(AccountEvent::type).containsExactly("payment.received.v1");
         assertThat(second.nextFromVersion()).isNull();
@@ -247,7 +247,7 @@ class JdbcEventStoreAdapterIT {
                 id, first.nextFromVersion(), 1, "payment.received.v1");
 
         assertThat(first.events()).extracting(AccountEvent::version).containsExactly(3L);
-        assertThat(first.nextFromVersion()).isEqualTo(4L);
+        assertThat(first.nextFromVersion()).isEqualTo(5L);
         assertThat(second.events()).extracting(AccountEvent::version).containsExactly(5L);
         assertThat(second.nextFromVersion()).isNull();
     }
@@ -268,7 +268,7 @@ class JdbcEventStoreAdapterIT {
         AccountEventPage first = eventStore.readAccountEvents(id, 1, 2, null);
 
         assertThat(first.events()).extracting(AccountEvent::version).containsExactly(1L, 2L);
-        assertThat(first.nextFromVersion()).isEqualTo(3L);
+        assertThat(first.nextFromVersion()).isEqualTo(4L);
         AccountEventPage second = eventStore.readAccountEvents(id, first.nextFromVersion(), 2, null);
         assertThat(second.events()).extracting(AccountEvent::version).containsExactly(4L);
         assertThat(second.nextFromVersion()).isNull();

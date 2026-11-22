@@ -44,12 +44,11 @@ adapter/out/postgres/  ← Event store, idempotency store
 | `POST` | `/credit-accounts/{id}/purchases/authorizations/{authId}/capture` | Capture an authorization |
 | `POST` | `/credit-accounts/{id}/purchases/authorizations/{authId}/release` | Release an authorization |
 | `POST` | `/credit-accounts/{id}/payments` | Receive a payment |
-| `GET` | `/credit-accounts/{id}/events` | Get account event history; `?fromVersion=N&limit=N` controls pagination |
 | `POST` | `/credit-accounts/{id}/block` | Block a credit account |
 | `POST` | `/credit-accounts/{id}/unblock` | Unblock a credit account |
 | `GET` | `/credit-accounts` | List account summaries (paginated) |
 | `GET` | `/credit-accounts/{id}` | Get account summary; `?minVersion=N` enables read-your-writes |
-| `GET` | `/credit-accounts/{id}/events` | Get event history; `?type=EVENT_TYPE` filters by versioned event type (also supports `fromVersion` and `limit`) |
+| `GET` | `/credit-accounts/{id}/events` | Get event history; `?type=EVENT_TYPE` filters by versioned event type; `fromVersion` and `limit` control pagination |
 
 All `POST` endpoints require `Idempotency-Key` header.
 
