@@ -117,6 +117,35 @@ class CreditAccountControllerListIT {
     }
 
     @Test
+    void eventHistory_filtersByTypeAndRejectsUnknownTypes() {
+        UUID id = UUID.randomUUID();
+        eventStoreAdapter.appendEvents("CreditAccount", id.toString(), 0,
+                List.of(new CreditAccountOpened(CreditAccountId.of(id), Instant.parse("2025-01-01T00:00:00Z"))), Map.of());
+        eventStoreAdapter.appendEvents("CreditAccount", id.toString(), 1,
+                List.of(new CreditLimitAssigned(CreditAccountId.of(id), Money.of("1000.00"),
+                        Instant.parse("2025-01-01T00:00:01Z"))), Map.of());
+
+        ResponseEntity<Map<String, Object>> filtered = rest.exchange(
+                url("/credit-accounts/" + id + "/events?type=credit-account.credit-limit-assigned.v1"),
+                org.springframework.http.HttpMethod.GET, org.springframework.http.HttpEntity.EMPTY,
+                new org.springframework.core.ParameterizedTypeReference<>() { });
+        assertThat(filtered.getStatusCode()).isEqualTo(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> filteredItems = (List<Map<String, Object>>) filtered.getBody().get("items");
+        assertThat(filteredItems).hasSize(1);
+        assertThat(filteredItems.getFirst()).containsEntry("version", 2).containsEntry("type", "credit-account.credit-limit-assigned.v1");
+
+        RestTemplate errorTolerantRest = new RestTemplate();
+        errorTolerantRest.setErrorHandler(response -> false);
+        ResponseEntity<Map<String, Object>> unknown = errorTolerantRest.exchange(
+                url("/credit-accounts/" + id + "/events?type=not-a-known-type"),
+                org.springframework.http.HttpMethod.GET, org.springframework.http.HttpEntity.EMPTY,
+                new org.springframework.core.ParameterizedTypeReference<>() { });
+        assertThat(unknown.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(unknown.getBody()).containsKey("error");
+    }
+
+    @Test
     void getById_returns404_whenSummaryMissing() {
         UUID id = UUID.randomUUID();
         try {

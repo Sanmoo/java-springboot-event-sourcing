@@ -19,7 +19,7 @@ class EventHistoryQueryTest {
 
     @Test
     void readAccountEventsReturnsEmptyForUnknownAccount() {
-        AccountEventPage page = eventStore.readAccountEvents(UUID.randomUUID(), 1, 50);
+        AccountEventPage page = eventStore.readAccountEvents(UUID.randomUUID(), 1, 50, null);
 
         assertThat(page.events()).isEmpty();
         assertThat(page.nextFromVersion()).isNull();

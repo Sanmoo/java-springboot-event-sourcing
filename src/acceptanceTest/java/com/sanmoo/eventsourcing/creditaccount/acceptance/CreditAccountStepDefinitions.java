@@ -128,6 +128,26 @@ public class CreditAccountStepDefinitions {
         }
     }
 
+    @Então("o histórico da conta deve listar apenas o tipo de evento {string}")
+    public void historicoFiltradoPeloTipo(String eventType) {
+        Map<String, Object> history = http.getAccountEvents(context.getCreditAccountId(), eventType);
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> items = (java.util.List<Map<String, Object>>) history.get("items");
+        assertThat(items).isNotEmpty();
+        assertThat(items).allSatisfy(item -> assertThat(item.get("type")).isEqualTo(eventType));
+    }
+
+    @Então("o histórico filtrado deve continuar na próxima versão do evento")
+    public void historicoFiltradoPaginado() {
+        Map<String, Object> first = http.getAccountEvents(
+                context.getCreditAccountId(), "credit-account.credit-limit-assigned.v1", 1, 1);
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> items = (java.util.List<Map<String, Object>>) first.get("items");
+        assertThat(items).hasSize(1);
+        assertThat(items.getFirst()).containsEntry("version", 2)
+                .containsEntry("type", "credit-account.credit-limit-assigned.v1");
+    }
+
     @Quando("a conta é bloqueada")
     public void bloquearConta() {
         Map<String, Object> response = http.blockAccount(context.getCreditAccountId(), null);

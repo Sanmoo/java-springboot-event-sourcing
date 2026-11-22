@@ -182,9 +182,9 @@ class JdbcEventStoreAdapterIT {
         eventStore.appendEvents("CreditAccount", id.toString(), 1,
                 List.of(new CreditLimitAssigned(accountId, Money.of("100.00"), limitAt)), Map.of());
 
-        AccountEventPage first = eventStore.readAccountEvents(id, 1, 1);
-        AccountEventPage second = eventStore.readAccountEvents(id, 2, 1);
-        AccountEventPage unknown = eventStore.readAccountEvents(UUID.randomUUID(), 1, 50);
+        AccountEventPage first = eventStore.readAccountEvents(id, 1, 1, null);
+        AccountEventPage second = eventStore.readAccountEvents(id, 2, 1, null);
+        AccountEventPage unknown = eventStore.readAccountEvents(UUID.randomUUID(), 1, 50, null);
         assertThat(first.events()).hasSize(1);
         assertThat(first.events().getFirst().version()).isEqualTo(1);
         assertThat(first.events().getFirst().type()).isEqualTo("credit-account.opened.v1");
@@ -201,6 +201,24 @@ class JdbcEventStoreAdapterIT {
     }
 
     @Test
+    void accountHistoryFiltersByTypeBeforeApplyingPaging() {
+        UUID id = UUID.randomUUID();
+        var accountId = CreditAccountId.of(id);
+        eventStore.appendEvents("CreditAccount", id.toString(), 0,
+                List.of(new CreditAccountOpened(accountId, Instant.parse("2025-01-01T00:00:00Z"))), Map.of());
+        eventStore.appendEvents("CreditAccount", id.toString(), 1,
+                List.of(new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2025-01-01T00:00:01Z"))), Map.of());
+        eventStore.appendEvents("CreditAccount", id.toString(), 2,
+                List.of(new PaymentReceived(accountId, Money.of("1.00"), Instant.parse("2025-01-01T00:00:02Z"))), Map.of());
+
+        AccountEventPage first = eventStore.readAccountEvents(id, 1, 1, "payment.received.v1");
+
+        assertThat(first.events()).extracting(AccountEvent::version).containsExactly(3L);
+        assertThat(first.events()).extracting(AccountEvent::type).containsExactly("payment.received.v1");
+        assertThat(first.nextFromVersion()).isNull();
+    }
+
+    @Test
     void accountHistoryPagingContinuesAtTheNextStoredVersionAcrossVersionGaps() {
         UUID id = UUID.randomUUID();
         var accountId = CreditAccountId.of(id);
@@ -213,11 +231,11 @@ class JdbcEventStoreAdapterIT {
                         accountId, Money.of("1.00"), Instant.parse("2025-01-01T00:00:02Z"))), Map.of());
         jdbcTemplate.update("UPDATE event_store SET aggregate_version = 4 WHERE aggregate_type = 'CreditAccount' AND aggregate_id = ? AND aggregate_version = 3", id.toString());
 
-        AccountEventPage first = eventStore.readAccountEvents(id, 1, 2);
+        AccountEventPage first = eventStore.readAccountEvents(id, 1, 2, null);
 
         assertThat(first.events()).extracting(AccountEvent::version).containsExactly(1L, 2L);
         assertThat(first.nextFromVersion()).isEqualTo(4L);
-        AccountEventPage second = eventStore.readAccountEvents(id, first.nextFromVersion(), 2);
+        AccountEventPage second = eventStore.readAccountEvents(id, first.nextFromVersion(), 2, null);
         assertThat(second.events()).extracting(AccountEvent::version).containsExactly(4L);
         assertThat(second.nextFromVersion()).isNull();
     }

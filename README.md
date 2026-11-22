@@ -46,6 +46,7 @@ adapter/out/postgres/  ← Event store, idempotency store
 | `POST` | `/credit-accounts/{id}/payments` | Receive a payment |
 | `GET` | `/credit-accounts` | List account summaries (paginated) |
 | `GET` | `/credit-accounts/{id}` | Get account summary; `?minVersion=N` enables read-your-writes |
+| `GET` | `/credit-accounts/{id}/events` | Get event history; `?type=EVENT_TYPE` filters by versioned event type (also supports `fromVersion` and `limit`) |
 
 All `POST` endpoints require `Idempotency-Key` header.
 
