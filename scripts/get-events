@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/api.sh"
+
+require_tools
+
+if [[ $# -lt 1 || $# -gt 3 ]]; then
+  usage "$(basename "$0") <credit-account-id> [from-version] [limit]"
+fi
+
+account_id="$1"
+from_version="${2:-1}"
+limit="${3:-50}"
+
+api_get "/credit-accounts/${account_id}/events?fromVersion=${from_version}&limit=${limit}"
