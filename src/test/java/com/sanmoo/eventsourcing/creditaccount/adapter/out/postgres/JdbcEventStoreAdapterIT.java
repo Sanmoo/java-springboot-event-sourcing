@@ -210,12 +210,21 @@ class JdbcEventStoreAdapterIT {
                 List.of(new CreditLimitAssigned(accountId, Money.of("100.00"), Instant.parse("2025-01-01T00:00:01Z"))), Map.of());
         eventStore.appendEvents("CreditAccount", id.toString(), 2,
                 List.of(new PaymentReceived(accountId, Money.of("1.00"), Instant.parse("2025-01-01T00:00:02Z"))), Map.of());
+        eventStore.appendEvents("CreditAccount", id.toString(), 3,
+                List.of(new CreditLimitAssigned(accountId, Money.of("200.00"), Instant.parse("2025-01-01T00:00:03Z"))), Map.of());
+        eventStore.appendEvents("CreditAccount", id.toString(), 4,
+                List.of(new PaymentReceived(accountId, Money.of("2.00"), Instant.parse("2025-01-01T00:00:04Z"))), Map.of());
 
         AccountEventPage first = eventStore.readAccountEvents(id, 1, 1, "payment.received.v1");
+        AccountEventPage second = eventStore.readAccountEvents(
+                id, first.nextFromVersion(), 1, "payment.received.v1");
 
         assertThat(first.events()).extracting(AccountEvent::version).containsExactly(3L);
         assertThat(first.events()).extracting(AccountEvent::type).containsExactly("payment.received.v1");
-        assertThat(first.nextFromVersion()).isNull();
+        assertThat(first.nextFromVersion()).isEqualTo(4L);
+        assertThat(second.events()).extracting(AccountEvent::version).containsExactly(5L);
+        assertThat(second.events()).extracting(AccountEvent::type).containsExactly("payment.received.v1");
+        assertThat(second.nextFromVersion()).isNull();
     }
 
     @Test
