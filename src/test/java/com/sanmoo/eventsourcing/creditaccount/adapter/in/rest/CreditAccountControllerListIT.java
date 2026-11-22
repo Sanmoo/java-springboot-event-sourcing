@@ -7,6 +7,7 @@ import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.PageResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.in.rest.dto.ProjectionNotReadyResponse;
 import com.sanmoo.eventsourcing.creditaccount.adapter.out.postgres.JdbcEventStoreAdapter;
 import com.sanmoo.eventsourcing.creditaccount.core.projection.ProjectionWorker;
+import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountBlocked;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditAccountOpened;
 import com.sanmoo.eventsourcing.creditaccount.domain.event.CreditLimitAssigned;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
@@ -174,6 +175,35 @@ class CreditAccountControllerListIT {
                 new org.springframework.core.ParameterizedTypeReference<>() { });
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsKey("error");
+    }
+
+    @Test
+    void list_filtersByStatusAndPaginatesFilteredResults() {
+        UUID active = UUID.randomUUID();
+        UUID blocked = UUID.randomUUID();
+        Instant now = Instant.now();
+        eventStoreAdapter.appendEvents("CreditAccount", active.toString(), 0,
+                List.of(new CreditAccountOpened(CreditAccountId.of(active), now)), Map.of());
+        eventStoreAdapter.appendEvents("CreditAccount", blocked.toString(), 0,
+                List.of(new CreditAccountOpened(CreditAccountId.of(blocked), now)), Map.of());
+        eventStoreAdapter.appendEvents("CreditAccount", blocked.toString(), 1,
+                List.of(new CreditAccountBlocked(CreditAccountId.of(blocked), "review", now.plusSeconds(1))), Map.of());
+        projectionWorker.processOnce(50);
+
+        ResponseEntity<PageResponse> firstPage = rest.getForEntity(
+                url("/credit-accounts?status=BLOCKED&page=0&size=1"), PageResponse.class);
+        ResponseEntity<PageResponse> beyondFilteredSet = rest.getForEntity(
+                url("/credit-accounts?status=BLOCKED&page=1&size=1"), PageResponse.class);
+
+        assertThat(firstPage.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(firstPage.getBody().items()).hasSize(1);
+        assertThat(firstPage.getBody().items().getFirst().creditAccountId()).isEqualTo(blocked.toString());
+        assertThat(firstPage.getBody().items().getFirst().status()).isEqualTo("BLOCKED");
+        assertThat(firstPage.getBody().totalItems()).isEqualTo(1);
+        assertThat(firstPage.getBody().totalPages()).isEqualTo(1);
+        assertThat(beyondFilteredSet.getBody().items()).isEmpty();
+        assertThat(beyondFilteredSet.getBody().totalItems()).isEqualTo(1);
+        assertThat(beyondFilteredSet.getBody().totalPages()).isEqualTo(1);
     }
 
     @Test
