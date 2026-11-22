@@ -14,6 +14,7 @@ public class AcceptanceTestContext {
     private Long lastProjectedVersion;
     private ResponseEntity<Map<String, Object>> lastResponse;
     private String lastIdempotencyKey;
+    private UUID blockedAccountId;
 
     public UUID getCreditAccountId() { return creditAccountId; }
     public void setCreditAccountId(UUID creditAccountId) { this.creditAccountId = creditAccountId; }
@@ -26,6 +27,9 @@ public class AcceptanceTestContext {
 
     public ResponseEntity<Map<String, Object>> getLastResponse() { return lastResponse; }
     public void setLastResponse(ResponseEntity<Map<String, Object>> lastResponse) { this.lastResponse = lastResponse; }
+
+    public UUID getBlockedAccountId() { return blockedAccountId; }
+    public void setBlockedAccountId(UUID blockedAccountId) { this.blockedAccountId = blockedAccountId; }
 
     public String getLastIdempotencyKey() { return lastIdempotencyKey; }
     public void setLastIdempotencyKey(String lastIdempotencyKey) { this.lastIdempotencyKey = lastIdempotencyKey; }

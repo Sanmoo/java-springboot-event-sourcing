@@ -30,6 +30,9 @@ class JdbcCreditAccountSummaryAdapterIT {
     @Autowired
     JdbcCreditAccountSummaryAdapter adapter;
 
+    @Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Test
     void upsertAndFindById_roundtrips() {
         UUID id = UUID.randomUUID();
@@ -62,6 +65,29 @@ class JdbcCreditAccountSummaryAdapterIT {
 
         assertThat(adapter.findById(CreditAccountId.of(id))).isPresent()
                 .get().extracting(CreditAccountSummary::status).isEqualTo("BLOCKED");
+    }
+
+    @Test
+    void findAll_filtersStatusBeforeApplyingPaginationAndCountsFilteredRows() {
+        UUID active1 = UUID.randomUUID();
+        UUID blocked = UUID.randomUUID();
+        UUID active2 = UUID.randomUUID();
+        Instant now = Instant.now();
+        adapter.upsert(summary(active1, "ACTIVE", now.minusSeconds(30)));
+        adapter.upsert(summary(blocked, "BLOCKED", now.minusSeconds(20)));
+        adapter.upsert(summary(active2, "ACTIVE", now.minusSeconds(10)));
+
+        CreditAccountSummaryPage page = adapter.findAll(new CreditAccountSummaryPageRequest(1, 1, "ACTIVE"));
+
+        assertThat(page.items()).hasSize(1);
+        assertThat(page.items().getFirst().creditAccountId()).isEqualTo(active1);
+        assertThat(page.totalItems()).isEqualTo(2);
+        assertThat(page.totalPages()).isEqualTo(2);
+    }
+
+    private CreditAccountSummary summary(UUID id, String status, Instant updatedAt) {
+        return new CreditAccountSummary(id, true, status, "500.00", "0.00", "0.00", "500.00",
+                List.of(), 1L, UUID.randomUUID(), updatedAt);
     }
 
     @Test

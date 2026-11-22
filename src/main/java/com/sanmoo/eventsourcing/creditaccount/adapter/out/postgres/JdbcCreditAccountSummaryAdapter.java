@@ -47,12 +47,13 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
 
     private static final String FIND_PAGE_SQL = """
             SELECT credit_account_id, opened, status, credit_limit, outstanding_balance, authorized_amount, available_limit, authorizations, projected_version, last_event_id, updated_at FROM credit_account_summary
+            WHERE (CAST(? AS text) IS NULL OR status = ?)
             ORDER BY updated_at DESC, credit_account_id ASC
             LIMIT ? OFFSET ?
             """;
 
     private static final String COUNT_SQL =
-            "SELECT COUNT(*) FROM credit_account_summary";
+            "SELECT COUNT(*) FROM credit_account_summary WHERE (CAST(? AS text) IS NULL OR status = ?)";
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -84,8 +85,9 @@ public class JdbcCreditAccountSummaryAdapter implements CreditAccountSummaryRepo
     @Override
     @Transactional(readOnly = true)
     public CreditAccountSummaryPage findAll(CreditAccountSummaryPageRequest request) {
-        List<CreditAccountSummary> items = jdbcTemplate.query(FIND_PAGE_SQL, this::map, request.size(), request.page() * request.size());
-        Long total = jdbcTemplate.queryForObject(COUNT_SQL, Long.class);
+        List<CreditAccountSummary> items = jdbcTemplate.query(FIND_PAGE_SQL, this::map,
+                request.status(), request.status(), request.size(), request.page() * request.size());
+        Long total = jdbcTemplate.queryForObject(COUNT_SQL, Long.class, request.status(), request.status());
         long totalItems = total == null ? 0L : total;
         int totalPages = request.size() == 0 ? 0 : (int) Math.ceil(totalItems / (double) request.size());
         return new CreditAccountSummaryPage(items, request.page(), request.size(), totalItems, totalPages);

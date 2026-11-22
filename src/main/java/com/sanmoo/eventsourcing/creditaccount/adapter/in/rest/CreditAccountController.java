@@ -189,8 +189,9 @@ public class CreditAccountController {
     @GetMapping
     public ResponseEntity<PageResponse> listAccounts(
             @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size) {
-        var input = new ListCreditAccountsInput(page, size);
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "status", required = false) String status) {
+        var input = new ListCreditAccountsInput(page, size, status);
         var output = listCreditAccountsUseCase.execute(input);
         var items = output.items().stream()
                 .map(CreditAccountDtoMapper::toResponse)
