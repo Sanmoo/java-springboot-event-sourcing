@@ -21,13 +21,16 @@ public class ListCreditAccountsUseCase {
     private final CreditAccountSummaryRepository summaries;
 
     public ListCreditAccountsOutput execute(ListCreditAccountsInput input) {
+        if (input.status() != null && !"ACTIVE".equals(input.status()) && !"BLOCKED".equals(input.status())) {
+            throw new IllegalArgumentException("status must be ACTIVE or BLOCKED");
+        }
         if (input.size() > ListCreditAccountsInput.MAX_SIZE) {
             throw new InvalidPageSizeException("size must be <= " + ListCreditAccountsInput.MAX_SIZE);
         }
         if (input.page() < 0) {
             throw new InvalidPageSizeException("page must be >= 0");
         }
-        CreditAccountSummaryPage page = summaries.findAll(new CreditAccountSummaryPageRequest(input.page(), input.size()));
+        CreditAccountSummaryPage page = summaries.findAll(new CreditAccountSummaryPageRequest(input.page(), input.size(), input.status()));
         List<CreditAccountOutput> items = page.items().stream()
                 .map(this::toOutput)
                 .toList();

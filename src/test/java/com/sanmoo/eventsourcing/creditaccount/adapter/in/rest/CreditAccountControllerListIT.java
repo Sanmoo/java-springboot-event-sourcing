@@ -165,6 +165,18 @@ class CreditAccountControllerListIT {
     }
 
     @Test
+    void list_returns400_forUnsupportedStatus() {
+        RestTemplate errorTolerantRest = new RestTemplate();
+        errorTolerantRest.setErrorHandler(response -> false);
+        ResponseEntity<Map<String, Object>> response = errorTolerantRest.exchange(
+                url("/credit-accounts?status=UNKNOWN"), org.springframework.http.HttpMethod.GET,
+                org.springframework.http.HttpEntity.EMPTY,
+                new org.springframework.core.ParameterizedTypeReference<>() { });
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsKey("error");
+    }
+
+    @Test
     void list_returnsPagedItems() {
         UUID id = UUID.randomUUID();
         eventStoreAdapter.appendEvents("CreditAccount", id.toString(), 0,

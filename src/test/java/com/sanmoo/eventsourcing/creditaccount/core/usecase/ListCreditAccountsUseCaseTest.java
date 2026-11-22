@@ -44,6 +44,17 @@ class ListCreditAccountsUseCaseTest {
     }
 
     @Test
+    void passesStatusFilterToRepository() {
+        when(repo.findAll(any())).thenReturn(new CreditAccountSummaryPage(List.of(), 1, 2, 0, 0));
+
+        useCase.execute(new ListCreditAccountsInput(1, 2, "BLOCKED"));
+
+        ArgumentCaptor<CreditAccountSummaryPageRequest> captor = ArgumentCaptor.forClass(CreditAccountSummaryPageRequest.class);
+        verify(repo).findAll(captor.capture());
+        assertThat(captor.getValue().status()).isEqualTo("BLOCKED");
+    }
+
+    @Test
     void mapsSummaryPageToOutput() {
         UUID accountId = UUID.randomUUID();
         var authorization = new CreditAccountSummary.AuthorizationSummary(
