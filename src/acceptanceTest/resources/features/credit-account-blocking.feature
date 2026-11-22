@@ -43,3 +43,10 @@ Funcionalidade: Bloqueio de conta de crédito
     Dado que uma conta de crédito foi aberta
     Quando a conta é desbloqueada
     Então a API deve retornar status 422 com mensagem contendo "not blocked"
+
+  Cenário: Listagem filtra contas bloqueadas antes da paginação
+    Dado que uma conta de crédito foi aberta
+    E o limite de crédito da conta é "500.00"
+    E a conta é bloqueada
+    Quando uma segunda conta de crédito ativa é aberta
+    Então a listagem de contas com status "BLOCKED" deve conter somente a conta bloqueada

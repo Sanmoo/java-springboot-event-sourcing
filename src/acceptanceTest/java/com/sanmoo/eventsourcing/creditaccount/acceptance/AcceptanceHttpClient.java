@@ -141,6 +141,15 @@ public class AcceptanceHttpClient {
         return response.getBody();
     }
 
+    public Map<String, Object> listAccounts(String status, int page, int size) {
+        ensureInitialized();
+        String url = baseUrl + "?status=" + status + "&page=" + page + "&size=" + size;
+        ResponseEntity<Map<String, Object>> response = rest.exchange(url, HttpMethod.GET, HttpEntity.EMPTY,
+                new ParameterizedTypeReference<>() {});
+        context.setLastResponse(response);
+        return response.getBody();
+    }
+
     public Map<String, Object> getAccountEvents(UUID accountId) {
         return getAccountEvents(accountId, null);
     }

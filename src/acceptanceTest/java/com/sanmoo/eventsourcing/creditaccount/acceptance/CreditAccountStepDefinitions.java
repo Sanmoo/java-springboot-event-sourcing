@@ -164,6 +164,27 @@ public class CreditAccountStepDefinitions {
         }
     }
 
+    @Quando("uma segunda conta de crédito ativa é aberta")
+    public void abrirSegundaContaAtiva() {
+        UUID blockedAccountId = context.getCreditAccountId();
+        http.awaitProjectedSummary(blockedAccountId, context.getLastProjectedVersion());
+        http.openAccount();
+        http.awaitProjectedSummary(context.getCreditAccountId(), context.getLastProjectedVersion());
+        context.setBlockedAccountId(blockedAccountId);
+    }
+
+    @Então("a listagem de contas com status {string} deve conter somente a conta bloqueada")
+    public void listagemFiltradaDeveConterContaBloqueada(String status) {
+        Map<String, Object> page = http.listAccounts(status, 0, 1);
+        assertThat(((Number) page.get("totalItems")).longValue()).isGreaterThanOrEqualTo(1L);
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> items = (java.util.List<Map<String, Object>>) page.get("items");
+        assertThat(items).hasSize(1);
+        assertThat(items.getFirst().get("creditAccountId")).isEqualTo(context.getBlockedAccountId().toString());
+        assertThat(items.getFirst().get("status")).isEqualTo(status);
+        assertThat(items).allMatch(item -> status.equals(item.get("status")));
+    }
+
     @Então("a autorização deve ser aceita")
     public void autorizacaoAceita() {
         assertThat(context.getLastResponse().getStatusCode().value()).isEqualTo(200);
