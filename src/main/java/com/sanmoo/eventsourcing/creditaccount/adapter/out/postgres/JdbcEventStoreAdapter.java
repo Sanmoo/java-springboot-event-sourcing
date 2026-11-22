@@ -99,7 +99,7 @@ public class JdbcEventStoreAdapter implements EventStore {
                 ACCOUNT_EXISTS_SQL, Boolean.class, accountId.toString()));
         Long nextFromVersion = null;
         if (rows.size() > limit) {
-            nextFromVersion = rows.get(limit).version();
+            nextFromVersion = rows.get(limit - 1).version() + 1;
             rows = new ArrayList<>(rows.subList(0, limit));
         }
         return new AccountEventPage(rows, nextFromVersion, Boolean.TRUE.equals(accountExists));
