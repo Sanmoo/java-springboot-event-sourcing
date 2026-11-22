@@ -20,7 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
-public class EventTypeMapper {
+public class EventTypeMapper implements com.sanmoo.eventsourcing.creditaccount.core.port.EventTypeCatalog {
 
     private static final Map<String, Class<? extends CreditAccountEvent>> TYPE_TO_CLASS = Map.of(
             "credit-account.opened.v1", CreditAccountOpened.class,
@@ -51,6 +51,11 @@ public class EventTypeMapper {
             throw new IllegalArgumentException("Unknown event type: " + event.getClass());
         }
         return type;
+    }
+
+    @Override
+    public boolean isKnown(String eventType) {
+        return TYPE_TO_CLASS.containsKey(eventType);
     }
 
     public Class<? extends CreditAccountEvent> classForType(String eventType) {

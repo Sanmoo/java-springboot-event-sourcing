@@ -145,8 +145,9 @@ public class CreditAccountController {
     public ResponseEntity<AccountEventHistoryResponse> getAccountEvents(
             @PathVariable String id,
             @RequestParam(value = "fromVersion", defaultValue = "1") long fromVersion,
-            @RequestParam(value = "limit", defaultValue = "50") int limit) {
-        var input = new GetCreditAccountEventsInput(CreditAccountId.of(UUID.fromString(id)), fromVersion, limit);
+            @RequestParam(value = "limit", defaultValue = "50") int limit,
+            @RequestParam(value = "type", required = false) String eventType) {
+        var input = new GetCreditAccountEventsInput(CreditAccountId.of(UUID.fromString(id)), fromVersion, limit, eventType);
         GetCreditAccountEventsOutput output = getCreditAccountEventsUseCase.execute(input);
         var items = output.items().stream()
                 .map(event -> new AccountEventResponse(event.version(), event.type(), event.occurredAt(), event.payload()))

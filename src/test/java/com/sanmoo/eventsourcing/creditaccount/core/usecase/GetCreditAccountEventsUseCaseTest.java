@@ -8,6 +8,7 @@ import com.sanmoo.eventsourcing.creditaccount.core.error.InvalidEventHistoryPage
 import com.sanmoo.eventsourcing.creditaccount.core.port.AccountEvent;
 import com.sanmoo.eventsourcing.creditaccount.core.port.AccountEventPage;
 import com.sanmoo.eventsourcing.creditaccount.core.port.EventStore;
+import com.sanmoo.eventsourcing.creditaccount.core.port.EventTypeCatalog;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.GetCreditAccountEventsInput;
 import com.sanmoo.eventsourcing.creditaccount.core.usecase.dto.GetCreditAccountEventsOutput;
 import com.sanmoo.eventsourcing.creditaccount.domain.model.CreditAccountId;
@@ -20,20 +21,42 @@ import org.junit.jupiter.api.Test;
 class GetCreditAccountEventsUseCaseTest {
 
     private final EventStore eventStore = mock(EventStore.class);
-    private final GetCreditAccountEventsUseCase useCase = new GetCreditAccountEventsUseCase(eventStore);
+    private final EventTypeCatalog eventTypeCatalog = eventType -> List.of("credit-account.opened.v1", "payment.received.v1").contains(eventType);
+    private final GetCreditAccountEventsUseCase useCase = new GetCreditAccountEventsUseCase(eventStore, eventTypeCatalog);
 
     @Test
     void getsTheRequestedHistoryPageFromEventStore() {
         UUID accountId = UUID.randomUUID();
         var expected = new AccountEvent(1, "credit-account.opened.v1", Instant.parse("2025-01-01T00:00:00Z"), Map.of());
-        when(eventStore.readAccountEvents(accountId, 1, 1)).thenReturn(new AccountEventPage(List.of(expected), 2L, true));
+        when(eventStore.readAccountEvents(accountId, 1, 1, null)).thenReturn(new AccountEventPage(List.of(expected), 2L, true));
 
-        var output = useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 1));
+        var output = useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 1, null));
 
         assertThat(output.items()).containsExactly(new GetCreditAccountEventsOutput.Item(
                 expected.version(), expected.type(), expected.occurredAt(), expected.payload()));
         assertThat(output.nextFromVersion()).isEqualTo(2L);
-        verify(eventStore).readAccountEvents(accountId, 1, 1);
+        verify(eventStore).readAccountEvents(accountId, 1, 1, null);
+    }
+
+    @Test
+    void passesTheKnownTypeFilterToTheEventStore() {
+        UUID accountId = UUID.randomUUID();
+        when(eventStore.readAccountEvents(accountId, 1, 2, "payment.received.v1"))
+                .thenReturn(new AccountEventPage(List.of(), null, true));
+
+        useCase.execute(new GetCreditAccountEventsInput(
+                CreditAccountId.of(accountId), 1, 2, "payment.received.v1"));
+
+        verify(eventStore).readAccountEvents(accountId, 1, 2, "payment.received.v1");
+    }
+
+    @Test
+    void rejectsUnknownEventTypeBeforeReadingHistory() {
+        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountEventsInput(
+                CreditAccountId.of(UUID.randomUUID()), 1, 50, "made-up.v1")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unknown event type");
+        verifyNoInteractions(eventStore);
     }
 
     @Test
@@ -42,9 +65,9 @@ class GetCreditAccountEventsUseCaseTest {
         Map<String, Object> payload = new java.util.HashMap<>();
         payload.put("optional", null);
         var expected = new AccountEvent(1, "credit-account.opened.v1", Instant.parse("2025-01-01T00:00:00Z"), payload);
-        when(eventStore.readAccountEvents(accountId, 1, 1)).thenReturn(new AccountEventPage(List.of(expected), null, true));
+        when(eventStore.readAccountEvents(accountId, 1, 1, null)).thenReturn(new AccountEventPage(List.of(expected), null, true));
 
-        var output = useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 1));
+        var output = useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 1, null));
 
         assertThat(output.items().getFirst().payload()).containsEntry("optional", null);
     }
@@ -53,18 +76,18 @@ class GetCreditAccountEventsUseCaseTest {
     void rejectsInvalidPageValues() {
         UUID accountId = UUID.randomUUID();
 
-        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 0, 1)))
+        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 0, 1, null)))
                 .isInstanceOf(InvalidEventHistoryPageException.class);
-        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 201)))
+        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 201, null)))
                 .isInstanceOf(InvalidEventHistoryPageException.class);
     }
 
     @Test
     void rejectsUnknownAccount() {
         UUID accountId = UUID.randomUUID();
-        when(eventStore.readAccountEvents(accountId, 1, 50)).thenReturn(new AccountEventPage(List.of(), null, false));
+        when(eventStore.readAccountEvents(accountId, 1, 50, null)).thenReturn(new AccountEventPage(List.of(), null, false));
 
-        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 50)))
+        assertThatThrownBy(() -> useCase.execute(new GetCreditAccountEventsInput(CreditAccountId.of(accountId), 1, 50, null)))
                 .hasMessageContaining("Credit account not found");
     }
 }

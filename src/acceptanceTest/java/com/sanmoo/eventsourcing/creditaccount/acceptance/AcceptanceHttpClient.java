@@ -151,9 +151,21 @@ public class AcceptanceHttpClient {
     }
 
     public Map<String, Object> getAccountEvents(UUID accountId) {
+        return getAccountEvents(accountId, null);
+    }
+
+    public Map<String, Object> getAccountEvents(UUID accountId, String eventType) {
+        return getAccountEvents(accountId, eventType, 1, 50);
+    }
+
+    public Map<String, Object> getAccountEvents(UUID accountId, String eventType, long fromVersion, int limit) {
         ensureInitialized();
+        String url = baseUrl + "/" + accountId + "/events?fromVersion=" + fromVersion + "&limit=" + limit;
+        if (eventType != null) {
+            url += "&type=" + eventType;
+        }
         ResponseEntity<Map<String, Object>> response = rest.exchange(
-                baseUrl + "/" + accountId + "/events",
+                url,
                 HttpMethod.GET,
                 HttpEntity.EMPTY,
                 new ParameterizedTypeReference<>() {}

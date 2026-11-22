@@ -38,7 +38,7 @@ public class JdbcEventStoreAdapter implements EventStore {
     private static final String READ_ACCOUNT_EVENTS_SQL = """
             SELECT aggregate_version, event_type, occurred_at, payload::text AS payload
             FROM event_store
-            WHERE aggregate_type = 'CreditAccount' AND aggregate_id = ? AND aggregate_version >= ?
+            WHERE aggregate_type = 'CreditAccount' AND aggregate_id = ? AND aggregate_version >= ? AND (CAST(? AS text) IS NULL OR event_type = ?)
             ORDER BY aggregate_version ASC
             LIMIT ?
             """;
@@ -87,14 +87,14 @@ public class JdbcEventStoreAdapter implements EventStore {
 
     @Override
     @Transactional(readOnly = true)
-    public AccountEventPage readAccountEvents(UUID accountId, long fromVersion, int limit) {
+    public AccountEventPage readAccountEvents(UUID accountId, long fromVersion, int limit, String eventType) {
         List<AccountEvent> rows = jdbcTemplate.query(READ_ACCOUNT_EVENTS_SQL, (rs, rowNum) ->
                 new AccountEvent(
                         rs.getLong("aggregate_version"),
                         rs.getString("event_type"),
                         rs.getTimestamp("occurred_at").toInstant(),
                         eventTypeMapper.deserializePayload(rs.getString("payload"))),
-                accountId.toString(), fromVersion, limit + 1);
+                accountId.toString(), fromVersion, eventType, eventType, limit + 1);
         boolean accountExists = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
                 ACCOUNT_EXISTS_SQL, Boolean.class, accountId.toString()));
         Long nextFromVersion = null;
